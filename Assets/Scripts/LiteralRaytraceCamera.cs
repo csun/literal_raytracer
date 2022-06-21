@@ -42,11 +42,8 @@ namespace LiteralRaytrace
             {
                 for (var i = 0; i < ActiveRayTarget / lights.Length; i++)
                 {
-                    var halfAngle = light.spotAngle / 2;
-                    var randRotation = Quaternion.Euler(
-                        Random.Range(-halfAngle, halfAngle),
-                        Random.Range(-halfAngle, halfAngle),
-                        0);
+                    var randRotation = Quaternion.AngleAxis(Random.Range(0, 360), light.transform.forward);
+                    randRotation *= Quaternion.AngleAxis(Random.Range(0, light.spotAngle / 2), light.transform.up);
 
                     // queue new rays
                     rayQueue.Enqueue(new CameraRay

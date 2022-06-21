@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Assertions;
 
 namespace LiteralRaytrace
 {
@@ -8,7 +9,13 @@ namespace LiteralRaytrace
         public Vector3 start;
         public Vector3 direction;
         public float startIntensity;
+        public Color color;
         public int bounces = 0;
+    }
+
+    public class CachedMaterial
+    {
+        public Texture2D albedo;
     }
 
     public class LiteralRaytraceCamera : MonoBehaviour
@@ -24,8 +31,9 @@ namespace LiteralRaytrace
         public float IntensityLowerBound = EVToIntensity(1);
 
         private Queue<CameraRay> rayQueue = new Queue<CameraRay>();
+        private Dictionary<int, CachedMaterial> materialCache = new Dictionary<int, CachedMaterial>();
 
-        private Camera camera;
+        private new Camera camera;
 
         private void Start()
         {
@@ -50,7 +58,8 @@ namespace LiteralRaytrace
                     {
                         start = light.transform.position,
                         direction = randRotation * light.transform.forward,
-                        startIntensity = light.intensity
+                        startIntensity = light.intensity,
+                        color = light.color
                     });
                 }
             }
@@ -83,6 +92,9 @@ namespace LiteralRaytrace
                     var newStartIntensity = Attenuation(hitinfo.distance) * ray.startIntensity;
                     var reflectedDirection = ray.direction - 2 * Vector3.Dot(ray.direction, hitinfo.normal) * hitinfo.normal;
 
+                    var material = GetOrAddCachedMaterial(hitinfo);
+                    var albedo = SampleTexture(material.albedo, hitinfo.textureCoord);
+
                     // TODO take normal map at point into account
 
                     rayQueue.Enqueue(new CameraRay
@@ -90,12 +102,38 @@ namespace LiteralRaytrace
                         start = hitinfo.point,
                         direction = reflectedDirection,
                         startIntensity = newStartIntensity,
+                        color = ray.color * albedo,
                         bounces = ray.bounces + 1
                     });
                 }
             }
 
             Target.Apply();
+        }
+
+        private Color SampleTexture(Texture2D tex, Vector2 uv)
+        {
+            uv.x *= tex.width;
+            uv.y *= tex.height;
+            return tex.GetPixel(Mathf.FloorToInt(uv.x), Mathf.FloorToInt(uv.y));
+        }
+
+        private CachedMaterial GetOrAddCachedMaterial(RaycastHit hitinfo)
+        {
+            var gameObject = hitinfo.collider.gameObject;
+            var id = gameObject.GetInstanceID();
+            if (!materialCache.ContainsKey(id))
+            {
+                var material = gameObject.GetComponent<Renderer>().material;
+                Assert.AreEqual(material.shader.name, "HDRP/Lit");
+
+                materialCache[id] = new CachedMaterial
+                {
+                    albedo = (Texture2D)material.GetTexture("_BaseColorMap")
+                };
+            }
+
+            return materialCache[id];
         }
 
         private void InitTexture()
@@ -134,7 +172,7 @@ namespace LiteralRaytrace
             var totalWorldDistance = (ray.start - rayEnd).magnitude;
             DrawLine(new Vector2Int(Mathf.FloorToInt(screenStart.x), Mathf.FloorToInt(screenStart.y)),
                 new Vector2Int(Mathf.FloorToInt(screenEnd.x), Mathf.FloorToInt(screenEnd.y)),
-                Color.red,
+                ray.color,
                 ray.startIntensity,
                 startRatio * totalWorldDistance,
                 totalWorldDistance * (1 - (startRatio + endRatio)));

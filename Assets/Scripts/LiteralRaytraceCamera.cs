@@ -42,9 +42,10 @@ namespace LiteralRaytrace
             {
                 for (var i = 0; i < ActiveRayTarget / lights.Length; i++)
                 {
+                    var halfAngle = light.spotAngle / 2;
                     var randRotation = Quaternion.Euler(
-                        Random.Range(-light.spotAngle, light.spotAngle),
-                        Random.Range(-light.spotAngle, light.spotAngle),
+                        Random.Range(-halfAngle, halfAngle),
+                        Random.Range(-halfAngle, halfAngle),
                         0);
 
                     // queue new rays
@@ -136,7 +137,7 @@ namespace LiteralRaytrace
             var totalWorldDistance = (ray.start - rayEnd).magnitude;
             DrawLine(new Vector2Int(Mathf.FloorToInt(screenStart.x), Mathf.FloorToInt(screenStart.y)),
                 new Vector2Int(Mathf.FloorToInt(screenEnd.x), Mathf.FloorToInt(screenEnd.y)),
-                Color.white,
+                Color.red,
                 ray.startIntensity,
                 startRatio * totalWorldDistance,
                 totalWorldDistance * (1 - (startRatio + endRatio)));
@@ -174,6 +175,8 @@ namespace LiteralRaytrace
                 }
             }
 
+            // Screen coordinate system starts in lower left with positive x going right and positive y going up
+
             // left of frame
             if (start.x < 0 && delta.x > 0)
             {
@@ -182,18 +185,20 @@ namespace LiteralRaytrace
             // right of frame
             else if (start.x >= Target.width && delta.x < 0)
             {
-                UpdateCandidateIfInBounds((Target.width - start.x) / delta.x);
+                // Add an extra -1 so that it ends up at the pixel index width - 1
+                UpdateCandidateIfInBounds((Target.width - start.x - 1) / delta.x);
             }
 
-            // above frame
+            // below frame
             if (start.y < 0 && delta.y > 0)
             {
                 UpdateCandidateIfInBounds(-start.y / delta.y);
             }
-            // below frame
+            // above frame
             else if (start.y >= Target.height && delta.y < 0)
             {
-                UpdateCandidateIfInBounds((Target.height - start.y) / delta.y);
+                // Add an extra -1 so that it ends up at the pixel index height - 1
+                UpdateCandidateIfInBounds((Target.height - start.y - 1) / delta.y);
             }
 
             // behind camera
@@ -213,62 +218,38 @@ namespace LiteralRaytrace
             var increment = new Vector2Int((end.x < start.x) ? -1 : 1, (end.y < start.y) ? -1 : 1);
             var initialScreenDistance = delta.magnitude;
 
+            float baseColorHue, baseColorSat, baseColorVal;
+            Color.RGBToHSV(baseColor, out baseColorHue, out baseColorSat, out baseColorVal);
+
             Color GetColor(float screenDistance)
             {
-                return baseColor * NormalizeIntensity(
+                var intensity = NormalizeIntensity(
                     sourceIntensity * Attenuation(initialWorldDistance + ((1 - (screenDistance / initialScreenDistance)) * totalWorldDistance)));
+
+                return Color.HSVToRGB(
+                    baseColorHue,
+                    baseColorSat,
+                    baseColorVal * intensity);
             }
 
-            // Handle perfect diagonals
-            if (delta.x == delta.y)
+            int i = delta.x + delta.y;
+            int error = delta.x - delta.y;
+            delta.x *= 2;
+            delta.y *= 2;
+
+            while (i-- > 0)
             {
-                while (delta.x-- > 0)
+                Target.SetPixel(start.x, start.y, GetColor((start - end).magnitude));
+
+                if (error < 0)
                 {
-                    delta.y--;
-
-                    Target.SetPixel(start.x, start.y, GetColor(delta.magnitude));
-
-                    start.x += increment.x;
                     start.y += increment.y;
+                    error += delta.x;
                 }
-
-            }
-            // Handle all other lines
-            else
-            {
-                int i = delta.x + delta.y;
-                int error = delta.x - delta.y;
-                delta.x *= 2;
-                delta.y *= 2;
-
-                while (i-- > 0)
+                else
                 {
-                    Target.SetPixel(start.x, start.y, GetColor((start - end).magnitude));
-
-                    if (error < 0)
-                    {
-                        if (error >= -delta.x) // new diagonal case
-                        {
-                            start.x += increment.x;
-                            error -= delta.y;
-                            --i;
-                        }
-
-                        start.y += increment.y;
-                        error += delta.x;
-                    }
-                    else
-                    {
-                        if (error > delta.y) // new diagonal case
-                        {
-                            start.y += increment.y;
-                            error += delta.x;
-                            --i;
-                        }
-
-                        start.x += increment.x;
-                        error -= delta.y;
-                    }
+                    start.x += increment.x;
+                    error -= delta.y;
                 }
             }
 

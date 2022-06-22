@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.Assertions;
 
@@ -20,6 +21,11 @@ namespace LiteralRaytrace
 
     public class LiteralRaytraceCamera : MonoBehaviour
     {
+        static ProfilerMarker newRayPerfMarker = new ProfilerMarker("LiteralRaytrace.CreateLightRays");
+        static ProfilerMarker processRayPerfMarker = new ProfilerMarker("LiteralRaytrace.ProcessQueuedRays");
+        static ProfilerMarker updateTargetPerfMarker = new ProfilerMarker("LiteralRaytrace.UpdateTarget");
+        static ProfilerMarker writeTargetPerfMarker = new ProfilerMarker("LiteralRaytrace.UpdateTarget.WriteTarget");
+
         [HideInInspector]
         public Texture2D Target;
 
@@ -30,6 +36,10 @@ namespace LiteralRaytrace
         public float IntensityUpperBound = EVToIntensity(16);
         public float IntensityLowerBound = EVToIntensity(1);
 
+        public Color[] preTargetBuffer;
+        public Color[,] averageColor;
+        private uint[,] samples;
+        private uint maxSamples;
         private Queue<CameraRay> rayQueue = new Queue<CameraRay>();
         private Dictionary<int, CachedMaterial> materialCache = new Dictionary<int, CachedMaterial>();
 
@@ -42,73 +52,141 @@ namespace LiteralRaytrace
 
         private void Update()
         {
-            InitTexture();
+            Init();
 
-            // Generate new rays
-            var lights = FindObjectsOfType<Light>();
-            foreach (var light in lights)
+            CreateLightRays();
+            ProcessQueuedRays();
+
+            UpdateTarget();
+        }
+        private void Init()
+        {
+            if (Target == null || Target.width != Screen.width || Target.height != Screen.height)
             {
-                for (var i = 0; i < ActiveRayTarget / lights.Length; i++)
-                {
-                    var randRotation = Quaternion.AngleAxis(Random.Range(0, 360), light.transform.forward);
-                    randRotation *= Quaternion.AngleAxis(Random.Range(0, light.spotAngle / 2), light.transform.up);
+                Target = new Texture2D(Screen.width, Screen.height);
+                averageColor = new Color[Screen.width, Screen.height];
+                preTargetBuffer = new Color[Screen.width * Screen.height];
+                samples = new uint[Screen.width, Screen.height];
+                maxSamples = 0;
 
-                    // queue new rays
-                    rayQueue.Enqueue(new CameraRay
+                // Clear texture
+                for (int x = 0; x < Target.width; x++)
+                {
+                    for (int y = 0; y < Target.height; y++)
                     {
-                        start = light.transform.position,
-                        direction = randRotation * light.transform.forward,
-                        startIntensity = light.intensity,
-                        color = light.color
-                    });
+                        averageColor[x, y] = Color.black;
+                        preTargetBuffer[x + (y * Target.width)] = Color.black;
+                    }
+                }
+
+                Target.SetPixels(0, 0, Target.width, Target.height, preTargetBuffer);
+            }
+        }
+
+        private void CreateLightRays()
+        {
+            using (newRayPerfMarker.Auto())
+            {
+                var lights = FindObjectsOfType<Light>();
+                foreach (var light in lights)
+                {
+                    for (var i = 0; i < ActiveRayTarget / lights.Length; i++)
+                    {
+                        var randRotation = Quaternion.AngleAxis(Random.Range(0, 360), light.transform.forward);
+                        randRotation *= Quaternion.AngleAxis(Random.Range(0, light.spotAngle / 2), light.transform.up);
+
+                        // queue new rays
+                        rayQueue.Enqueue(new CameraRay
+                        {
+                            start = light.transform.position,
+                            direction = randRotation * light.transform.forward,
+                            startIntensity = light.intensity,
+                            color = light.color
+                        });
+                    }
                 }
             }
+        }
 
-            // Process queued rays
-            var raysToProcess = rayQueue;
-            rayQueue = new Queue<CameraRay>();
-            while (raysToProcess.Count > 0)
+        private void ProcessQueuedRays()
+        {
+            using (processRayPerfMarker.Auto())
             {
-                var ray = raysToProcess.Dequeue();
-
-                var maxDistance = InvAttenuation(IntensityLowerBound / ray.startIntensity);
-                RaycastHit hitinfo;
-                var hit = Physics.Raycast(ray.start, ray.direction, out hitinfo, maxDistance);
-
-                // Set a ray end where we reach min intensity if nothing is hit
-                Vector3 rayEnd;
-                if (hit) { rayEnd = hitinfo.point; }
-                else { rayEnd = (maxDistance * ray.direction) + ray.start; }
-
-                // Draw the ray if it's past the min bounce threshold
-                if (ray.bounces >= MinBounces)
+                var raysToProcess = rayQueue;
+                rayQueue = new Queue<CameraRay>();
+                while (raysToProcess.Count > 0)
                 {
-                    RasterizeRay(ray, rayEnd);
-                }
+                    var ray = raysToProcess.Dequeue();
 
-                // Finally, queue a new ray if it will bounce
-                if (hit && ray.bounces < MaxBounces)
-                {
-                    var newStartIntensity = Attenuation(hitinfo.distance) * ray.startIntensity;
-                    var reflectedDirection = ray.direction - 2 * Vector3.Dot(ray.direction, hitinfo.normal) * hitinfo.normal;
+                    var maxDistance = InvAttenuation(IntensityLowerBound / ray.startIntensity);
+                    RaycastHit hitinfo;
+                    var hit = Physics.Raycast(ray.start, ray.direction, out hitinfo, maxDistance);
 
-                    var material = GetOrAddCachedMaterial(hitinfo);
-                    var albedo = SampleTexture(material.albedo, hitinfo.textureCoord);
+                    // Set a ray end where we reach min intensity if nothing is hit
+                    Vector3 rayEnd;
+                    if (hit) { rayEnd = hitinfo.point; }
+                    else { rayEnd = (maxDistance * ray.direction) + ray.start; }
 
-                    // TODO take normal map at point into account
-
-                    rayQueue.Enqueue(new CameraRay
+                    // Draw the ray if it's past the min bounce threshold
+                    if (ray.bounces >= MinBounces)
                     {
-                        start = hitinfo.point,
-                        direction = reflectedDirection,
-                        startIntensity = newStartIntensity,
-                        color = ray.color * albedo,
-                        bounces = ray.bounces + 1
-                    });
+                        RasterizeRay(ray, rayEnd);
+                    }
+
+                    // Finally, queue a new ray if it will bounce
+                    if (hit && ray.bounces < MaxBounces)
+                    {
+                        var newStartIntensity = Attenuation(hitinfo.distance) * ray.startIntensity;
+                        var reflectedDirection = ray.direction - 2 * Vector3.Dot(ray.direction, hitinfo.normal) * hitinfo.normal;
+
+                        var material = GetOrAddCachedMaterial(hitinfo);
+                        var albedo = SampleTexture(material.albedo, hitinfo.textureCoord);
+
+                        // TODO take normal map at point into account
+
+                        rayQueue.Enqueue(new CameraRay
+                        {
+                            start = hitinfo.point,
+                            direction = reflectedDirection,
+                            startIntensity = newStartIntensity,
+                            color = ray.color * albedo,
+                            bounces = ray.bounces + 1
+                        });
+                    }
                 }
             }
+        }
 
-            Target.Apply();
+        private void UpdateTarget()
+        {
+            using (updateTargetPerfMarker.Auto())
+            {
+                for (int x = 0; x < Target.width; x++)
+                {
+                    for (int y = 0; y < Target.height; y++)
+                    {
+                        Color color;
+                        if (samples[x, y] == 0)
+                        {
+                            color = Color.black;
+                        }
+                        else
+                        {
+                            color = averageColor[x, y] * ((float)samples[x, y] / maxSamples);
+                        }
+
+                        color.a = 1;
+
+                        preTargetBuffer[x + (y * Target.width)] = color;
+                    }
+                }
+
+                using (writeTargetPerfMarker.Auto())
+                {
+                    Target.SetPixels(0, 0, Target.width, Target.height, preTargetBuffer);
+                    Target.Apply();
+                }
+            }
         }
 
         private Color SampleTexture(Texture2D tex, Vector2 uv)
@@ -134,23 +212,6 @@ namespace LiteralRaytrace
             }
 
             return materialCache[id];
-        }
-
-        private void InitTexture()
-        {
-            if (Target == null || Target.width != Screen.width || Target.height != Screen.height)
-            {
-                Target = new Texture2D(Screen.width, Screen.height);
-
-                // Clear texture
-                for (int x = 0; x < Target.width; x++)
-                {
-                    for (int y = 0; y < Target.height; y++)
-                    {
-                        Target.SetPixel(x, y, Color.black);
-                    }
-                }
-            }
         }
 
         private void RasterizeRay(CameraRay ray, Vector3 rayEnd)
@@ -274,7 +335,7 @@ namespace LiteralRaytrace
 
             while (i-- > 0)
             {
-                Target.SetPixel(start.x, start.y, GetColor((start - end).magnitude));
+                RecordSample(start.x, start.y, GetColor((start - end).magnitude));
 
                 if (error < 0)
                 {
@@ -288,7 +349,22 @@ namespace LiteralRaytrace
                 }
             }
 
-            Target.SetPixel(end.x, end.y, GetColor(0));
+            RecordSample(end.x, end.y, GetColor(0));
+        }
+
+        private void RecordSample(int x, int y, Color color)
+        {
+            var count = ++samples[x, y];
+            maxSamples = count > maxSamples ? count : maxSamples;
+
+            if (count > 1)
+            {
+                // Average the color in-place
+                var ratio = (count - 1.0f) / count;
+                color = (ratio * averageColor[x, y]) + ((1 - ratio) * color);
+            }
+
+            averageColor[x, y] = color;
         }
 
         private float NormalizeIntensity(float intensity)

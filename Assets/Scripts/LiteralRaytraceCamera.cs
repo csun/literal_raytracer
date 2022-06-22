@@ -26,8 +26,9 @@ namespace LiteralRaytrace
         static ProfilerMarker updateTargetPerfMarker = new ProfilerMarker("LiteralRaytrace.UpdateTarget");
         static ProfilerMarker writeTargetPerfMarker = new ProfilerMarker("LiteralRaytrace.UpdateTarget.WriteTarget");
 
+        public ComputeShader DrawShader;
         [HideInInspector]
-        public Texture2D Target;
+        public RenderTexture Target;
 
         public int ActiveRayTarget = 100;
         public int MinBounces = 1;
@@ -36,10 +37,9 @@ namespace LiteralRaytrace
         public float IntensityUpperBound = EVToIntensity(16);
         public float IntensityLowerBound = EVToIntensity(1);
 
-        public Color[] preTargetBuffer;
-        public Color[,] averageColor;
-        private uint[,] samples;
-        private uint maxSamples;
+        public Texture2D averageColor;
+        private Texture2D samples;
+        private float maxSamples;
         private Queue<CameraRay> rayQueue = new Queue<CameraRay>();
         private Dictionary<int, CachedMaterial> materialCache = new Dictionary<int, CachedMaterial>();
 
@@ -63,23 +63,28 @@ namespace LiteralRaytrace
         {
             if (Target == null || Target.width != Screen.width || Target.height != Screen.height)
             {
-                Target = new Texture2D(Screen.width, Screen.height);
-                averageColor = new Color[Screen.width, Screen.height];
-                preTargetBuffer = new Color[Screen.width * Screen.height];
-                samples = new uint[Screen.width, Screen.height];
-                maxSamples = 0;
+                if (Target != null)
+                {
+                    Target.Release();
+                }
+
+                Target = new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
+                Target.enableRandomWrite = true;
+                Target.Create();
+
+                averageColor = new Texture2D(Screen.width, Screen.height, TextureFormat.RGBAFloat, false, true);
+                samples = new Texture2D(Screen.width, Screen.height, TextureFormat.RFloat, false, true);
+                maxSamples = 1;  // Initialize to 1 to avoid divide by zero errors early on
 
                 // Clear texture
                 for (int x = 0; x < Target.width; x++)
                 {
                     for (int y = 0; y < Target.height; y++)
                     {
-                        averageColor[x, y] = Color.black;
-                        preTargetBuffer[x + (y * Target.width)] = Color.black;
+                        averageColor.SetPixel(x, y, Color.black);
+                        samples.SetPixel(x, y, Color.black);
                     }
                 }
-
-                Target.SetPixels(0, 0, Target.width, Target.height, preTargetBuffer);
             }
         }
 
@@ -95,7 +100,6 @@ namespace LiteralRaytrace
                         var randRotation = Quaternion.AngleAxis(Random.Range(0, 360), light.transform.forward);
                         randRotation *= Quaternion.AngleAxis(Random.Range(0, light.spotAngle / 2), light.transform.up);
 
-                        // queue new rays
                         rayQueue.Enqueue(new CameraRay
                         {
                             start = light.transform.position,
@@ -161,31 +165,15 @@ namespace LiteralRaytrace
         {
             using (updateTargetPerfMarker.Auto())
             {
-                for (int x = 0; x < Target.width; x++)
-                {
-                    for (int y = 0; y < Target.height; y++)
-                    {
-                        Color color;
-                        if (samples[x, y] == 0)
-                        {
-                            color = Color.black;
-                        }
-                        else
-                        {
-                            color = averageColor[x, y] * ((float)samples[x, y] / maxSamples);
-                        }
+                averageColor.Apply();
+                samples.Apply();
 
-                        color.a = 1;
+                DrawShader.SetTexture(0, "Result", Target);
+                DrawShader.SetTexture(0, "_AverageColor", averageColor);
+                DrawShader.SetTexture(0, "_Samples", samples);
+                DrawShader.SetFloat("_MaxSamples", maxSamples);
 
-                        preTargetBuffer[x + (y * Target.width)] = color;
-                    }
-                }
-
-                using (writeTargetPerfMarker.Auto())
-                {
-                    Target.SetPixels(0, 0, Target.width, Target.height, preTargetBuffer);
-                    Target.Apply();
-                }
+                DrawShader.Dispatch(0, Mathf.CeilToInt(Screen.width / 8.0f), Mathf.CeilToInt(Screen.height / 8.0f), 1);
             }
         }
 
@@ -354,17 +342,18 @@ namespace LiteralRaytrace
 
         private void RecordSample(int x, int y, Color color)
         {
-            var count = ++samples[x, y];
+            var count = samples.GetPixel(x, y).r + 1;
+            samples.SetPixel(x, y, new Color(count, 0, 0));
             maxSamples = count > maxSamples ? count : maxSamples;
 
             if (count > 1)
             {
                 // Average the color in-place
                 var ratio = (count - 1.0f) / count;
-                color = (ratio * averageColor[x, y]) + ((1 - ratio) * color);
+                color = (ratio * averageColor.GetPixel(x, y)) + ((1 - ratio) * color);
             }
 
-            averageColor[x, y] = color;
+            averageColor.SetPixel(x, y, color);
         }
 
         private float NormalizeIntensity(float intensity)

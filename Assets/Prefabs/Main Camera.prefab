@@ -203,12 +203,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0c1edc325bac44040b274cc68eb7e5e6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  DrawShader: {fileID: 7200000, guid: 5cad14cbe4719e241afc9674488b96fb, type: 3}
   Target: {fileID: 0}
   ActiveRayTarget: 100
   MinBounces: 1
   MaxBounces: 16
   IntensityUpperBound: 16
   IntensityLowerBound: 0.25
+  averageColor: {fileID: 0}
 --- !u!1 &1084870984824227031
 GameObject:
   m_ObjectHideFlags: 0

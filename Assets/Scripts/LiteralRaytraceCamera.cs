@@ -24,9 +24,8 @@ namespace LiteralRaytrace
         static ProfilerMarker newRayPerfMarker = new ProfilerMarker("LiteralRaytrace.CreateLightRays");
         static ProfilerMarker processRayPerfMarker = new ProfilerMarker("LiteralRaytrace.ProcessQueuedRays");
         static ProfilerMarker updateTargetPerfMarker = new ProfilerMarker("LiteralRaytrace.UpdateTarget");
-        static ProfilerMarker writeTargetPerfMarker = new ProfilerMarker("LiteralRaytrace.UpdateTarget.WriteTarget");
 
-        public ComputeShader DrawShader;
+        public Material FullscreenPassMaterial;
         [HideInInspector]
         public RenderTexture Target;
 
@@ -48,6 +47,7 @@ namespace LiteralRaytrace
         private void Start()
         {
             camera = GetComponent<Camera>();
+            camera.depthTextureMode = DepthTextureMode.Depth;
         }
 
         private void Update()
@@ -168,12 +168,16 @@ namespace LiteralRaytrace
                 averageColor.Apply();
                 samples.Apply();
 
+                FullscreenPassMaterial.SetInt("_RayCount", 3000);
+
+                /*
                 DrawShader.SetTexture(0, "Result", Target);
                 DrawShader.SetTexture(0, "_AverageColor", averageColor);
                 DrawShader.SetTexture(0, "_Samples", samples);
                 DrawShader.SetFloat("_MaxSamples", maxSamples);
 
                 DrawShader.Dispatch(0, Mathf.CeilToInt(Screen.width / 8.0f), Mathf.CeilToInt(Screen.height / 8.0f), 1);
+                */
             }
         }
 

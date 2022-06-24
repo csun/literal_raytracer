@@ -18,22 +18,33 @@ class LiteralRaytraceCustomPass : CustomPass
     {
         samplingPassId = LiteralRaytraceMaterial.FindPass("SamplingPass");
         colorPassId = LiteralRaytraceMaterial.FindPass("ColorPass");
+        ReinitialzeTextures();
+    }
 
-        samplingOutputs = new RenderTexture[2]
+    private void ReinitialzeTextures()
+    {
+        if (samplingOutputs == null || samplingOutputs[0].width != Screen.width || samplingOutputs[0].height != Screen.height)
         {
-            new RenderTexture(
-                Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear),
-            new RenderTexture(
-                Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear)
-        };
+            DestroyTextures();
 
-        samplingOutputs[0].Create();
-        samplingOutputs[1].Create();
+            samplingOutputs = new RenderTexture[2]
+            {
+                new RenderTexture(
+                    Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear),
+                new RenderTexture(
+                    Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear)
+            };
+
+            samplingOutputs[0].Create();
+            samplingOutputs[1].Create();
+        }
     }
 
     protected override void Execute(CustomPassContext ctx)
     {
-        // Disable in editor
+        ReinitialzeTextures();
+
+        // Disable in scene view
         if (ctx.hdCamera.camera.cameraType == CameraType.SceneView)
         {
             return;
@@ -49,9 +60,17 @@ class LiteralRaytraceCustomPass : CustomPass
         currentSamplingIndex = nextSamplingIndex;
     }
 
+    void DestroyTextures()
+    {
+        if (samplingOutputs != null)
+        {
+            samplingOutputs[0].Release();
+            samplingOutputs[1].Release();
+        }
+    }
+
     protected override void Cleanup()
     {
-        samplingOutputs[0].Release();
-        samplingOutputs[1].Release();
+        DestroyTextures();
     }
 }

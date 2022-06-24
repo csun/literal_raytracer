@@ -228,7 +228,7 @@ MonoBehaviour:
   priority: 0
   customPasses:
   - id: 0
-  injectionPoint: 2
+  injectionPoint: 3
   references:
     version: 1
     00000000:

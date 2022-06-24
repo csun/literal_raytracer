@@ -38,23 +38,36 @@ Shader "FullScreen/LiteralRaytraceShader"
 	int _RayBounces[256];
 	int _RayCount;
 
-	RWTexture2D<float4> _AverageColor;
-	RWTexture2D<float> _Samples;
+	Texture2D<float4> _AverageColor;
+	Texture2D<float> _Samples;
 	float _TotalRays;
 
-	float4 FullScreenPass(Varyings varyings) : SV_Target
+	struct samplingOutput
 	{
+		float4 avgColor : SV_Target;
+		float samples : SV_Target1;
+	};
+
+	samplingOutput SamplingPass(Varyings varyings)
+	{
+		samplingOutput output;
+		output.avgColor = float4(varyings.positionCS.xy, 0, 1);
+		output.samples = 0.5;
+		return output;
+	}
+
+	float4 ColorPass(Varyings varyings) : SV_Target
+	{
+		// Need to add Properties block if want to edit material properties in inspector https://docs.unity3d.com/Manual/SL-Properties.html
+		// positionCS is normalized [0, 1] screenspace position
+		// depth appears to be in world units
+
 		float depth = LoadCameraDepth(varyings.positionCS.xy);
 		PositionInputs posInput = GetPositionInput(varyings.positionCS.xy, _ScreenSize.zw, depth, UNITY_MATRIX_I_VP, UNITY_MATRIX_V);
 
-		float4 col = float4(0, 0, 0, 1);
+		float4 col = _AverageColor[varyings.positionCS.xy];
+		col.b = _Samples[varyings.positionCS.xy];
 
-		for(int i = 0; i < _RayCount; i++)
-		{
-			col.r += 0.001;
-		}
-
-		col.r = depth;
 		return col;
 	}
 
@@ -64,7 +77,7 @@ Shader "FullScreen/LiteralRaytraceShader"
 	{
 		Pass
 		{
-			Name "Custom Pass 0"
+			Name "SamplingPass"
 
 			ZWrite Off
 			ZTest Always
@@ -72,7 +85,21 @@ Shader "FullScreen/LiteralRaytraceShader"
 			Cull Off
 
 			HLSLPROGRAM
-				#pragma fragment FullScreenPass
+				#pragma fragment SamplingPass
+			ENDHLSL
+		}
+
+		Pass
+		{
+			Name "ColorPass"
+
+			ZWrite Off
+			ZTest Always
+			Blend SrcAlpha OneMinusSrcAlpha
+			Cull Off
+
+			HLSLPROGRAM
+				#pragma fragment ColorPass
 			ENDHLSL
 		}
 	}

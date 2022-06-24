@@ -208,7 +208,7 @@ MonoBehaviour:
   ActiveRayTarget: 100
   MinBounces: 1
   MaxBounces: 16
-  IntensityUpperBound: 16
+  IntensityUpperBound: 4
   IntensityLowerBound: 0.25
   averageColor: {fileID: 0}
 --- !u!114 &2094342857388402104
@@ -228,20 +228,17 @@ MonoBehaviour:
   priority: 0
   customPasses:
   - id: 0
-  injectionPoint: 3
+  injectionPoint: 2
   references:
     version: 1
     00000000:
-      type: {class: FullScreenCustomPass, ns: UnityEngine.Rendering.HighDefinition, asm: Unity.RenderPipelines.HighDefinition.Runtime}
+      type: {class: LiteralRaytraceCustomPass, ns: , asm: Assembly-CSharp}
       data:
-        m_Name: LiteralRaytrace
+        m_Name: Custom Pass
         enabled: 1
         targetColorBuffer: 0
         targetDepthBuffer: 0
         clearFlags: 0
         passFoldout: 0
         m_Version: 0
-        fullscreenPassMaterial: {fileID: 2100000, guid: 88f5bc07884d9364aacabdab2b1ce72e, type: 2}
-        materialPassIndex: 0
-        materialPassName: Custom Pass 0
-        fetchColorBuffer: 0
+        LiteralRaytraceMaterial: {fileID: 2100000, guid: 88f5bc07884d9364aacabdab2b1ce72e, type: 2}

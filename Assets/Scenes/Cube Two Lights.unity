@@ -900,8 +900,8 @@ PrefabInstance:
       value: Main Camera
       objectReference: {fileID: 0}
     - target: {fileID: 1084870984071425496, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
-      propertyPath: IntensityUpperBound
-      value: 4
+      propertyPath: m_Enabled
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1084870984071425497, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
       propertyPath: m_RootOrder

@@ -31,22 +31,9 @@ Shader "FullScreen/LiteralRaytraceShader"
 	// There are also a lot of utility function you can use inside Common.hlsl and Color.hlsl,
 	// you can check them out in the source code of the core SRP package.
 
-	float3 _RayStarts[256];
-	float3 _RayEnds[256];
-	float3 _RayColors[256];
-	float _RayIntensities[256];
-	int _RayBounces[256];
-	int _RayCount;
-
 	// Sample count in alpha channel
 	Texture2D<float4> _ColorAndSamples;
 	float _TotalRays;
-
-	float4 SamplingPass(Varyings varyings) : SV_Target
-	{
-		float4 previous = _ColorAndSamples[varyings.positionCS.xy];
-		return float4(fmod(previous.r + 0.001f, 1), varyings.positionCS.y / 1080, 0, 1);
-	}
 
 	float4 ColorPass(Varyings varyings) : SV_Target
 	{
@@ -67,20 +54,6 @@ Shader "FullScreen/LiteralRaytraceShader"
 
 	SubShader
 	{
-		Pass
-		{
-			Name "SamplingPass"
-
-			ZWrite Off
-			ZTest Always
-			Blend SrcAlpha OneMinusSrcAlpha
-			Cull Off
-
-			HLSLPROGRAM
-				#pragma fragment SamplingPass
-			ENDHLSL
-		}
-
 		Pass
 		{
 			Name "ColorPass"

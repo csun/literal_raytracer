@@ -1,0 +1,20 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+RWTexture2D<float4> _ColorAndSamples;
+
+float3 _RayStarts[256];
+float3 _RayEnds[256];
+float3 _RayColors[256];
+float _RayIntensities[256];
+int _RayBounces[256];
+int _RayCount;
+
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    _ColorAndSamples[id.xy] = float4(fmod(_ColorAndSamples[id.xy].r + 0.01, 1), (id.x & 15)/15.0, (id.y & 15)/15.0, 1);
+}

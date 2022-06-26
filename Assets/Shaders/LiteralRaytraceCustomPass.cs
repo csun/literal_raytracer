@@ -5,38 +5,26 @@ using UnityEngine.Experimental.Rendering;
 
 class LiteralRaytraceCustomPass : CustomPass
 {
+    public ComputeShader SamplingShader;
     public Material LiteralRaytraceMaterial;
 
-    int samplingPassId;
-    int colorPassId;
-
-    RenderTexture[] samplingOutputs;
-    int currentSamplingIndex = 0;
-    int nextSamplingIndex { get { return (currentSamplingIndex + 1) % 2; } }
+    RenderTexture colorAndSamples;
 
     protected override void Setup(ScriptableRenderContext renderContext, CommandBuffer cmd)
     {
-        samplingPassId = LiteralRaytraceMaterial.FindPass("SamplingPass");
-        colorPassId = LiteralRaytraceMaterial.FindPass("ColorPass");
         ReinitialzeTextures();
     }
 
     private void ReinitialzeTextures()
     {
-        if (samplingOutputs == null || samplingOutputs[0].width != Screen.width || samplingOutputs[0].height != Screen.height)
+        if (colorAndSamples == null || colorAndSamples.width != Screen.width || colorAndSamples.height != Screen.height)
         {
             DestroyTextures();
 
-            samplingOutputs = new RenderTexture[2]
-            {
-                new RenderTexture(
-                    Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear),
-                new RenderTexture(
-                    Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear)
-            };
-
-            samplingOutputs[0].Create();
-            samplingOutputs[1].Create();
+            colorAndSamples = new RenderTexture(
+                Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
+            colorAndSamples.enableRandomWrite = true;
+            colorAndSamples.Create();
         }
     }
 
@@ -50,22 +38,19 @@ class LiteralRaytraceCustomPass : CustomPass
             return;
         }
 
-        LiteralRaytraceMaterial.SetTexture("_ColorAndSamples", samplingOutputs[currentSamplingIndex]);
+        SamplingShader.SetTexture(0, "_ColorAndSamples", colorAndSamples);
+        ctx.cmd.DispatchCompute(SamplingShader, 0, Screen.width / 8, Screen.height / 8, 1);
 
-        ctx.cmd.SetRenderTarget(samplingOutputs[nextSamplingIndex]);
-        CoreUtils.DrawFullScreen(ctx.cmd, LiteralRaytraceMaterial, shaderPassId: samplingPassId);
+        LiteralRaytraceMaterial.SetTexture("_ColorAndSamples", colorAndSamples);
         SetRenderTargetAuto(ctx.cmd);
-        CoreUtils.DrawFullScreen(ctx.cmd, LiteralRaytraceMaterial, shaderPassId: colorPassId);
-
-        currentSamplingIndex = nextSamplingIndex;
+        CoreUtils.DrawFullScreen(ctx.cmd, LiteralRaytraceMaterial);
     }
 
     void DestroyTextures()
     {
-        if (samplingOutputs != null)
+        if (colorAndSamples != null)
         {
-            samplingOutputs[0].Release();
-            samplingOutputs[1].Release();
+            colorAndSamples.Release();
         }
     }
 

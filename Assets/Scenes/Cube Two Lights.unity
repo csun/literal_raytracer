@@ -951,5 +951,9 @@ PrefabInstance:
       propertyPath: customPasses.Array.data[0].clearFlags
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2094342857388402104, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
+      propertyPath: customPasses.Array.data[0].SamplingShader
+      value: 
+      objectReference: {fileID: 7200000, guid: c1e60718fabdb874581cd2f3ca5b25d2, type: 3}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}

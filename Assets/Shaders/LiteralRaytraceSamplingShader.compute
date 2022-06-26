@@ -1,20 +1,47 @@
-// Each #kernel tells which function to compile; you can have many kernels
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
+#include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl" // for TEXTURE2D_X() and RW_TEXTURE2D_X
+
 #pragma kernel CSMain
+#define MAX_RAYS 256
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 RWTexture2D<float4> _ColorAndSamples;
+TEXTURE2D_X(_Depth);
 
-float3 _RayStarts[256];
-float3 _RayEnds[256];
-float3 _RayColors[256];
-float _RayIntensities[256];
-int _RayBounces[256];
+float3 _SSRayStarts[MAX_RAYS];
+float3 _SSRayDeltas[MAX_RAYS];
+float3 _RayColors[MAX_RAYS];
+float _RayNormalizedStartIntensities[MAX_RAYS];
 int _RayCount;
 
 
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
-    _ColorAndSamples[id.xy] = float4(fmod(_ColorAndSamples[id.xy].r + 0.01, 1), (id.x & 15)/15.0, (id.y & 15)/15.0, 1);
+	for (int i = 0; i < _RayCount; i++)
+	{
+		float2 relativePoint = id.xy - _SSRayStarts[i].xy;
+
+		// The ratio of total ray length that makes up the projection of our pixel onto it.
+		float ratio = dot(relativePoint, _SSRayDeltas[i].xy) / pow(length(_SSRayDeltas[i].xy), 2);
+		// Clamp so that we don't draw any points that are beyond the ends of the line segment
+		ratio = clamp(ratio, 0, 1);
+
+		float3 linePoint = (ratio * _SSRayDeltas[i]) + _SSRayStarts[i];
+
+		// Draw if this pixel is on the line and the line is in front of other objects in scene
+		bool shouldDraw = round(linePoint).xy == id.xy;
+		shouldDraw = shouldDraw && (linePoint.z > _Depth[COORD_TEXTURE2D_X(id.xy)].r);
+
+		float samples = _ColorAndSamples[id.xy].a + shouldDraw;
+        // Explanation here https://gamedev.stackexchange.com/questions/131372/light-attenuation-formula-derivation
+		float attenuation = 1.0f / (1.0f + pow(ratio * length(_SSRayDeltas[i]), 2));
+
+		float3 finalColor = (attenuation * _RayNormalizedStartIntensities[i] * _RayColors[i] / samples) +
+			(_ColorAndSamples[id.xy].xyz * (samples - 1) / samples);
+		finalColor = shouldDraw ? finalColor : _ColorAndSamples[id.xy].xyz;
+
+		_ColorAndSamples[id.xy] = float4(finalColor, samples);
+	}
 }

@@ -45,12 +45,15 @@ namespace LiteralRaytrace
         private Queue<CameraRay> castQueue = new Queue<CameraRay>();
         private Dictionary<int, CachedMaterial> materialCache = new Dictionary<int, CachedMaterial>();
 
+        private Light[] lights;
+        private int nextLight = 0;
         private new Camera camera;
 
         private void Start()
         {
             camera = GetComponent<Camera>();
             camera.depthTextureMode = DepthTextureMode.Depth;
+            lights = FindObjectsOfType<Light>();
         }
 
         private void Update()
@@ -63,22 +66,21 @@ namespace LiteralRaytrace
         {
             using (newRayPerfMarker.Auto())
             {
-                var lights = FindObjectsOfType<Light>();
-                foreach (var light in lights)
+                for (var i = 0; i < ActiveRayTarget - castQueue.Count; i++)
                 {
-                    for (var i = 0; i < ActiveRayTarget / lights.Length; i++)
-                    {
-                        var randRotation = Quaternion.AngleAxis(Random.Range(0, 360), light.transform.forward);
-                        randRotation *= Quaternion.AngleAxis(Random.Range(0, light.spotAngle / 2), light.transform.up);
+                    var light = lights[nextLight];
+                    nextLight = (nextLight + 1) % lights.Length;
 
-                        castQueue.Enqueue(new CameraRay
-                        {
-                            start = light.transform.position,
-                            direction = randRotation * light.transform.forward,
-                            startIntensity = light.intensity,
-                            color = light.color
-                        });
-                    }
+                    var randRotation = Quaternion.AngleAxis(Random.Range(0, 360), light.transform.forward);
+                    randRotation *= Quaternion.AngleAxis(Random.Range(0, light.spotAngle / 2), light.transform.up);
+
+                    castQueue.Enqueue(new CameraRay
+                    {
+                        start = light.transform.position,
+                        direction = randRotation * light.transform.forward,
+                        startIntensity = light.intensity,
+                        color = light.color
+                    });
                 }
             }
         }
@@ -103,16 +105,26 @@ namespace LiteralRaytrace
                     if (hit) { rayEnd = hitinfo.point; }
                     else { rayEnd = (maxDistance * ray.direction) + ray.start; }
 
+                    // Debug.DrawRay(ray.start, rayEnd - ray.start, Color.red);
                     // Draw the ray if it's past the min bounce threshold
                     if (ray.bounces >= MinBounces)
                     {
                         var screenspaceStart = camera.WorldToScreenPoint(ray.start);
-                        var screenspaceDelta = camera.WorldToScreenPoint(rayEnd) - screenspaceStart;
+                        var screenspaceEnd = camera.WorldToScreenPoint(rayEnd);
+                        var screenspaceDelta = screenspaceEnd - screenspaceStart;
+
+                        // This case seems to fix issues when rays start onscreen and end offscreen or vice versa.
+                        // This is probably some artifact of how the world to screen point function works for offscreen values.
+                        if (Mathf.Sign(screenspaceEnd.z) != Mathf.Sign(screenspaceStart.z))
+                        {
+                            screenspaceDelta.x = -screenspaceDelta.x;
+                            screenspaceDelta.y = -screenspaceDelta.y;
+                        }
 
                         RaysToDraw.Add(new DrawRay
                         {
-                            screenspaceStart = NormalizeWorldDepth(screenspaceStart),
-                            screenspaceDelta = NormalizeWorldDepth(screenspaceDelta),
+                            screenspaceStart = screenspaceStart,
+                            screenspaceDelta = screenspaceDelta,
                             worldspaceLength = (rayEnd - ray.start).magnitude,
                             normalizedStartIntensity = NormalizeIntensity(ray.startIntensity),
                             color = ray.color
@@ -123,7 +135,6 @@ namespace LiteralRaytrace
                     if (hit && ray.bounces < MaxBounces)
                     {
                         var newStartIntensity = Attenuation(hitinfo.distance) * ray.startIntensity;
-                        var reflectedDirection = ray.direction - 2 * Vector3.Dot(ray.direction, hitinfo.normal) * hitinfo.normal;
 
                         var material = GetOrAddCachedMaterial(hitinfo);
                         var albedo = SampleTexture(material.albedo, hitinfo.textureCoord);
@@ -133,7 +144,7 @@ namespace LiteralRaytrace
                         castQueue.Enqueue(new CameraRay
                         {
                             start = hitinfo.point,
-                            direction = reflectedDirection,
+                            direction = Vector3.Reflect(ray.direction, hitinfo.normal),
                             startIntensity = newStartIntensity,
                             color = ray.color * albedo,
                             bounces = ray.bounces + 1
@@ -166,14 +177,6 @@ namespace LiteralRaytrace
             }
 
             return materialCache[id];
-        }
-
-        private Vector3 NormalizeWorldDepth(Vector3 input)
-        {
-            return new Vector3(
-                input.x,
-                input.y,
-                (input.z - camera.nearClipPlane) / (camera.farClipPlane - camera.nearClipPlane));
         }
 
         private float NormalizeIntensity(float intensity)

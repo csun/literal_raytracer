@@ -899,6 +899,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Main Camera
       objectReference: {fileID: 0}
+    - target: {fileID: 1084870984071425496, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
+      propertyPath: ActiveRayTarget
+      value: 100
+      objectReference: {fileID: 0}
     - target: {fileID: 1084870984071425497, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
       propertyPath: m_RootOrder
       value: 0
@@ -942,6 +946,10 @@ PrefabInstance:
     - target: {fileID: 1084870984071425497, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2094342857388402104, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
+      propertyPath: customPasses.Array.data[0].blendAmount
+      value: 0.5
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}

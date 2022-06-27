@@ -7,7 +7,6 @@
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
 RWTexture2D<float4> _ColorAndSamples;
-TEXTURE2D_X(_Depth);
 
 float3 _SSRayStarts[MAX_RAYS];
 float3 _SSRayDeltas[MAX_RAYS];
@@ -20,6 +19,9 @@ int _RayCount;
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
+	float3 avgColor = _ColorAndSamples[id.xy].xyz;
+	float samples = _ColorAndSamples[id.xy].a;
+
 	for (int i = 0; i < _RayCount; i++)
 	{
 		float2 relativePoint = id.xy - _SSRayStarts[i].xy;
@@ -33,17 +35,20 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
 		// Draw if this pixel is on the line and the line is in front of other objects in scene
 		uint3 roundedLinePoint = round(linePoint);
-		bool shouldDraw = (roundedLinePoint.x == id.x) && (roundedLinePoint.y == id.y);
-		// shouldDraw = shouldDraw && (linePoint.z < _Depth[COORD_TEXTURE2D_X(id.xy)].r);
+		float depth = LinearEyeDepth(LoadCameraDepth(id.xy), _ZBufferParams);
+		bool shouldDraw = (roundedLinePoint.x == id.x) &&
+			(roundedLinePoint.y == id.y) &&
+			(linePoint.z < depth);
 
-		float samples = _ColorAndSamples[id.xy].a + shouldDraw;
+		samples = samples + shouldDraw;
         // Explanation here https://gamedev.stackexchange.com/questions/131372/light-attenuation-formula-derivation
 		float attenuation = 1 / (1 + pow(ratio * length(_WSRayLengths[i]), 2));
 
-		float3 finalColor = (attenuation * _RayNormalizedStartIntensities[i] * _RayColors[i] / samples) +
-			(_ColorAndSamples[id.xy].xyz * (samples - 1) / samples);
-		finalColor = shouldDraw ? finalColor : _ColorAndSamples[id.xy].xyz;
+		float3 candidateColor = (attenuation * _RayNormalizedStartIntensities[i] * _RayColors[i] / samples) +
+			(avgColor * (samples - 1) / samples);
+		avgColor = shouldDraw ? candidateColor : avgColor;
 
-		_ColorAndSamples[id.xy] = float4(finalColor, samples);
 	}
+
+	_ColorAndSamples[id.xy] = float4(avgColor, samples);
 }

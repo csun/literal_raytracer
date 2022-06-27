@@ -11,6 +11,7 @@ Shader "FullScreen/LiteralRaytraceShader"
 
 	// Sample count in alpha channel
 	Texture2D<float4> _ColorAndSamples;
+	float _BlendAmount;
 
 	float4 ColorPass(Varyings varyings) : SV_Target
 	{
@@ -18,7 +19,7 @@ Shader "FullScreen/LiteralRaytraceShader"
 		// positionCS is normalized [0, 1] screenspace position
 		// depth appears to be in world units
 		float4 col = _ColorAndSamples[varyings.positionCS.xy];
-		col.a = 1;
+		col.a = _BlendAmount;
 
 		return col;
 	}

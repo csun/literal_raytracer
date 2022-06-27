@@ -10,6 +10,7 @@ class LiteralRaytraceCustomPass : CustomPass
     public LiteralRaytraceCamera RaytraceCamera;
     public ComputeShader SamplingShader;
     public Material DrawMaterial;
+    public float blendAmount = 1;
 
     RenderTexture colorAndSamples;
 
@@ -35,7 +36,6 @@ class LiteralRaytraceCustomPass : CustomPass
         LoadRayBuffers();
 
         SamplingShader.SetTexture(0, "_ColorAndSamples", colorAndSamples);
-        SamplingShader.SetTexture(0, "_Depth", ctx.cameraDepthBuffer);
         SamplingShader.SetVectorArray("_SSRayStarts", screenspaceRayStartBuf);
         SamplingShader.SetVectorArray("_SSRayDeltas", screenspaceRayDeltaBuf);
         SamplingShader.SetFloats("_WSRayLengths", worldspaceRayLengthBuf);
@@ -45,6 +45,7 @@ class LiteralRaytraceCustomPass : CustomPass
         ctx.cmd.DispatchCompute(SamplingShader, 0, Screen.width / 8, Screen.height / 8, 1);
 
         DrawMaterial.SetTexture("_ColorAndSamples", colorAndSamples);
+        DrawMaterial.SetFloat("_BlendAmount", blendAmount);
         SetRenderTargetAuto(ctx.cmd);
         CoreUtils.DrawFullScreen(ctx.cmd, DrawMaterial);
     }

@@ -15,6 +15,7 @@ class LiteralRaytraceCustomPass : CustomPass
 
     Vector4[] screenspaceRayStartBuf = new Vector4[MAX_RAYS];
     Vector4[] screenspaceRayDeltaBuf = new Vector4[MAX_RAYS];
+    float[] worldspaceRayLengthBuf = new float[MAX_RAYS];
     Vector4[] rayColorBuf = new Vector4[MAX_RAYS];
     float[] rayStartIntensitiesBuf = new float[MAX_RAYS];
 
@@ -37,6 +38,7 @@ class LiteralRaytraceCustomPass : CustomPass
         SamplingShader.SetTexture(0, "_Depth", ctx.cameraDepthBuffer);
         SamplingShader.SetVectorArray("_SSRayStarts", screenspaceRayStartBuf);
         SamplingShader.SetVectorArray("_SSRayDeltas", screenspaceRayDeltaBuf);
+        SamplingShader.SetFloats("_WSRayLengths", worldspaceRayLengthBuf);
         SamplingShader.SetVectorArray("_RayColors", rayColorBuf);
         SamplingShader.SetFloats("_RayNormalizedStartIntensities", rayStartIntensitiesBuf);
         SamplingShader.SetInt("_RayCount", RaytraceCamera.RaysToDraw.Count);
@@ -75,6 +77,7 @@ class LiteralRaytraceCustomPass : CustomPass
             var ray = RaytraceCamera.RaysToDraw[i];
             screenspaceRayStartBuf[i] = ray.screenspaceStart;
             screenspaceRayDeltaBuf[i] = ray.screenspaceDelta;
+            worldspaceRayLengthBuf[i] = ray.worldspaceLength;
             rayColorBuf[i] = ray.color;
             rayStartIntensitiesBuf[i] = ray.normalizedStartIntensity;
         }

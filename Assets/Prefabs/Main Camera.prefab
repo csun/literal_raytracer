@@ -203,14 +203,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0c1edc325bac44040b274cc68eb7e5e6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  FullscreenPassMaterial: {fileID: 2100000, guid: 88f5bc07884d9364aacabdab2b1ce72e, type: 2}
-  Target: {fileID: 0}
   ActiveRayTarget: 100
   MinBounces: 1
   MaxBounces: 16
   IntensityUpperBound: 4
   IntensityLowerBound: 0.25
-  averageColor: {fileID: 0}
 --- !u!114 &2094342857388402104
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -234,11 +231,13 @@ MonoBehaviour:
     00000000:
       type: {class: LiteralRaytraceCustomPass, ns: , asm: Assembly-CSharp}
       data:
-        m_Name: Custom Pass
+        m_Name: LiteralRaytrace
         enabled: 1
         targetColorBuffer: 0
         targetDepthBuffer: 0
         clearFlags: 0
         passFoldout: 0
         m_Version: 0
-        LiteralRaytraceMaterial: {fileID: 2100000, guid: 88f5bc07884d9364aacabdab2b1ce72e, type: 2}
+        RaytraceCamera: {fileID: 1084870984071425496}
+        SamplingShader: {fileID: 7200000, guid: c1e60718fabdb874581cd2f3ca5b25d2, type: 3}
+        DrawMaterial: {fileID: 2100000, guid: 88f5bc07884d9364aacabdab2b1ce72e, type: 2}

@@ -18,6 +18,7 @@ namespace LiteralRaytrace
     {
         public Vector3 screenspaceStart;
         public Vector3 screenspaceDelta;
+        public float worldspaceLength;
         public float normalizedStartIntensity;
         public Color color;
     }
@@ -106,11 +107,13 @@ namespace LiteralRaytrace
                     if (ray.bounces >= MinBounces)
                     {
                         var screenspaceStart = camera.WorldToScreenPoint(ray.start);
+                        var screenspaceDelta = camera.WorldToScreenPoint(rayEnd) - screenspaceStart;
 
                         RaysToDraw.Add(new DrawRay
                         {
-                            screenspaceStart = screenspaceStart,
-                            screenspaceDelta = camera.WorldToScreenPoint(rayEnd) - screenspaceStart,
+                            screenspaceStart = NormalizeWorldDepth(screenspaceStart),
+                            screenspaceDelta = NormalizeWorldDepth(screenspaceDelta),
+                            worldspaceLength = (rayEnd - ray.start).magnitude,
                             normalizedStartIntensity = NormalizeIntensity(ray.startIntensity),
                             color = ray.color
                         });
@@ -163,6 +166,14 @@ namespace LiteralRaytrace
             }
 
             return materialCache[id];
+        }
+
+        private Vector3 NormalizeWorldDepth(Vector3 input)
+        {
+            return new Vector3(
+                input.x,
+                input.y,
+                (input.z - camera.nearClipPlane) / (camera.farClipPlane - camera.nearClipPlane));
         }
 
         private float NormalizeIntensity(float intensity)

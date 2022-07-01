@@ -112,14 +112,14 @@ namespace LiteralRaytrace
                         var screenspaceStart = camera.WorldToScreenPoint(ray.start);
                         var screenspaceEnd = camera.WorldToScreenPoint(rayEnd);
                         var screenspaceDelta = screenspaceEnd - screenspaceStart;
-
                         // This case seems to fix issues when rays start onscreen and end offscreen or vice versa.
-                        // This is probably some artifact of how the world to screen point function works for offscreen values.
                         if (Mathf.Sign(screenspaceEnd.z) != Mathf.Sign(screenspaceStart.z))
                         {
                             screenspaceDelta.x = -screenspaceDelta.x;
                             screenspaceDelta.y = -screenspaceDelta.y;
                         }
+                        screenspaceStart.z = InverseLinearEyeDepth(screenspaceStart.z);
+                        screenspaceDelta.z = InverseLinearEyeDepth(screenspaceEnd.z) - screenspaceStart.z;
 
                         RaysToDraw.Add(new DrawRay
                         {
@@ -177,6 +177,14 @@ namespace LiteralRaytrace
             }
 
             return materialCache[id];
+        }
+
+        // The inverse of shader function LinearEyeDepth()
+        private float InverseLinearEyeDepth(float linDepth)
+        {
+            var near = camera.nearClipPlane;
+            var far = camera.farClipPlane;
+            return ((1.0f / linDepth) - (1.0f / near)) / ((1.0f / far) - (1.0f / near));
         }
 
         private float NormalizeIntensity(float intensity)

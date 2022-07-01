@@ -21,6 +21,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 {
 	float3 avgColor = _ColorAndSamples[id.xy].xyz;
 	float samples = _ColorAndSamples[id.xy].a;
+	float depth = LoadCameraDepth(id.xy);
 
 	for (int i = 0; i < _RayCount; i++)
 	{
@@ -32,13 +33,17 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 		ratio = clamp(ratio, 0, 1);
 
 		float3 linePoint = (ratio * _SSRayDeltas[i]) + _SSRayStarts[i];
+		// TODO maybe once we have this screenspace point we can go back into worldspace and find the closest depth to
+		// that vector?
 
 		// Draw if this pixel is on the line and the line is in front of other objects in scene
 		uint3 roundedLinePoint = round(linePoint);
-		float depth = LinearEyeDepth(LoadCameraDepth(id.xy), _ZBufferParams);
 		bool shouldDraw = (roundedLinePoint.x == id.x) &&
 			(roundedLinePoint.y == id.y) &&
-			(linePoint.z < depth);
+			(linePoint.z > depth); // &&
+			// (linePoint.z < 1)
+
+		// NOTE - for raw depth, near plane is 1.0, far plane is 0.0
 
 		samples = samples + shouldDraw;
         // Explanation here https://gamedev.stackexchange.com/questions/131372/light-attenuation-formula-derivation
@@ -46,8 +51,11 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
 		float3 candidateColor = (attenuation * _RayNormalizedStartIntensities[i] * _RayColors[i] / samples) +
 			(avgColor * (samples - 1) / samples);
+		candidateColor = float3(linePoint.z < 1 ? linePoint.z : 0, linePoint.z >= 1 ? 1 - linePoint.z : 0, 0);
 		avgColor = shouldDraw ? candidateColor : avgColor;
 
+		// Debug start points
+		avgColor = (id.x == round(_SSRayStarts[i]).x) && (id.y == round(_SSRayStarts[i]).y) ? float3(0, 0, 1) : avgColor;
 	}
 
 	_ColorAndSamples[id.xy] = float4(avgColor, samples);

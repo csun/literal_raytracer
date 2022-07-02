@@ -109,17 +109,9 @@ namespace LiteralRaytrace
                     // Draw the ray if it's past the min bounce threshold
                     if (ray.bounces >= MinBounces)
                     {
-                        var screenspaceStart = camera.WorldToScreenPoint(ray.start);
-                        var screenspaceEnd = camera.WorldToScreenPoint(rayEnd);
+                        var screenspaceStart = WorldToScreen(ray.start);
+                        var screenspaceEnd = WorldToScreen(rayEnd);
                         var screenspaceDelta = screenspaceEnd - screenspaceStart;
-                        // This case seems to fix issues when rays start onscreen and end offscreen or vice versa.
-                        if (Mathf.Sign(screenspaceEnd.z) != Mathf.Sign(screenspaceStart.z))
-                        {
-                            screenspaceDelta.x = -screenspaceDelta.x;
-                            screenspaceDelta.y = -screenspaceDelta.y;
-                        }
-                        screenspaceStart.z = InverseLinearEyeDepth(screenspaceStart.z);
-                        screenspaceDelta.z = InverseLinearEyeDepth(screenspaceEnd.z) - screenspaceStart.z;
 
                         RaysToDraw.Add(new DrawRay
                         {
@@ -177,6 +169,20 @@ namespace LiteralRaytrace
             }
 
             return materialCache[id];
+        }
+
+        private Vector3 WorldToScreen(Vector3 world)
+        {
+            var screen = camera.WorldToScreenPoint(world);
+            if (screen.z < 0)
+            {
+                var center = new Vector3(Screen.width / 2, Screen.height / 2, 0);
+                var diff = center - screen;
+                screen += 2 * diff;
+            }
+            screen.z = InverseLinearEyeDepth(screen.z);
+
+            return screen;
         }
 
         // The inverse of shader function LinearEyeDepth()

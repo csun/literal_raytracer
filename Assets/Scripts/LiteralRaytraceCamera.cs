@@ -109,7 +109,7 @@ namespace LiteralRaytrace
                     if (hit) { rayEnd = hitinfo.point; }
                     else { rayEnd = (maxDistance * ray.direction) + ray.start; }
 
-                    // Debug.DrawRay(ray.start, rayEnd - ray.start, Color.red);
+                    Debug.DrawRay(ray.start, rayEnd - ray.start, Color.yellow);
                     // Draw the ray if it's past the min bounce threshold
                     if (ray.bounces >= MinBounces)
                     {
@@ -193,9 +193,16 @@ namespace LiteralRaytrace
         // The inverse of shader function LinearEyeDepth()
         private float InverseLinearEyeDepth(float linDepth)
         {
+            var sign = 1;
+            if (linDepth < 0)
+            {
+                linDepth = -linDepth;
+                sign = -1;
+            }
+
             var near = camera.nearClipPlane;
             var far = camera.farClipPlane;
-            return ((1.0f / linDepth) - (1.0f / near)) / ((1.0f / far) - (1.0f / near));
+            return sign * ((1.0f / linDepth) - (1.0f / near)) / ((1.0f / far) - (1.0f / near));
         }
 
         private float NormalizeIntensity(float intensity)

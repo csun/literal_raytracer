@@ -6,21 +6,19 @@
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
-RWTexture2D<float4> _ColorAndSamples;
+RWTexture2D<float4> _ColorAndTotals;
 
 float3 _SSRayStarts[MAX_RAYS];
 float3 _SSRayDeltas[MAX_RAYS];
-float3 _WSRayLengths[MAX_RAYS];
 float3 _RayColors[MAX_RAYS];
-float _RayNormalizedStartIntensities[MAX_RAYS];
 int _RayCount;
 
 
 [numthreads(8,8,1)]
 void CSMain (uint3 id : SV_DispatchThreadID)
 {
-	float3 avgColor = _ColorAndSamples[id.xy].xyz;
-	float samples = _ColorAndSamples[id.xy].a;
+	float3 avgColor = _ColorAndTotals[id.xy].xyz;
+	float totalLuminance = _ColorAndTotals[id.xy].a;
 	// By default, camera depth is reversed (0 is far plane, 1 is near plane)
 	float sceneDepth = 1 - LoadCameraDepth(id.xy);
 
@@ -34,8 +32,6 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 		ratio = clamp(ratio, 0, 1);
 
 		float3 linePoint = (ratio * _SSRayDeltas[i]) + _SSRayStarts[i];
-		// TODO maybe once we have this screenspace point we can go back into worldspace and find the closest depth to
-		// that vector?
 
 		// Draw if this pixel is on the line and the line is in front of other objects in scene
 		uint3 roundedLinePoint = round(linePoint);
@@ -44,18 +40,14 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 			(linePoint.z < sceneDepth) &&
 			(linePoint.z >= 0);
 
-		samples = samples + shouldDraw;
-        // Explanation here https://gamedev.stackexchange.com/questions/131372/light-attenuation-formula-derivation
-		float attenuation = 1 / (1 + pow(ratio * length(_WSRayLengths[i]), 2));
+		float currentLuminance = shouldDraw * length(_RayColors[i]);
+		float prevTotalLuminance = totalLuminance;
+		totalLuminance += currentLuminance;
 
-		float3 candidateColor = (attenuation * _RayNormalizedStartIntensities[i] * _RayColors[i] / samples) +
-			(avgColor * (samples - 1) / samples);
-		//candidateColor = float3(fmod(LinearEyeDepth(1 - linePoint.z, _ZBufferParams) / 2, 1), 0, 0);
+		float3 candidateColor = ((_RayColors[i] * currentLuminance) + (avgColor * prevTotalLuminance)) / totalLuminance;
+
 		avgColor = shouldDraw ? candidateColor : avgColor;
-
-		// Debug start points
-		//avgColor = (id.x == round(_SSRayStarts[i]).x) && (id.y == round(_SSRayStarts[i]).y) ? float3(0, 0, 1) : avgColor;
 	}
 
-	_ColorAndSamples[id.xy] = float4(avgColor, samples);
+	_ColorAndTotals[id.xy] = float4(avgColor, totalLuminance);
 }

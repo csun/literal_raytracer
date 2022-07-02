@@ -10,7 +10,6 @@ namespace LiteralRaytrace
     {
         public Vector3 start;
         public Vector3 direction;
-        public float startIntensity;
         public Color color;
         public int bounces = 0;
     }
@@ -19,8 +18,6 @@ namespace LiteralRaytrace
     {
         public Vector3 screenspaceStart;
         public Vector3 screenspaceDelta;
-        public float worldspaceLength;
-        public float normalizedStartIntensity;
         public Color color;
     }
 
@@ -37,6 +34,7 @@ namespace LiteralRaytrace
         public int ActiveRayTarget = 100;
         public int MinBounces = 1;
         public int MaxBounces = 16;
+        public float MaxRayDistance = 1000;
         [HideInInspector]
         public List<DrawRay> RaysToDraw = new List<DrawRay>();
 
@@ -82,8 +80,7 @@ namespace LiteralRaytrace
                     {
                         start = light.transform.position,
                         direction = randRotation * light.transform.forward,
-                        startIntensity = light.intensity,
-                        color = light.color
+                        color = light.color * NormalizeIntensity(light.intensity)
                     });
                 }
             }
@@ -100,16 +97,14 @@ namespace LiteralRaytrace
                 {
                     var ray = castQueue.Dequeue();
 
-                    var maxDistance = InvAttenuation(IntensityLowerBound / ray.startIntensity);
                     RaycastHit hitinfo;
-                    var hit = Physics.Raycast(ray.start, ray.direction, out hitinfo, maxDistance);
+                    var hit = Physics.Raycast(ray.start, ray.direction, out hitinfo, MaxRayDistance);
 
                     // Set a ray end where we reach min intensity if nothing is hit
                     Vector3 rayEnd;
                     if (hit) { rayEnd = hitinfo.point; }
-                    else { rayEnd = (maxDistance * ray.direction) + ray.start; }
+                    else { rayEnd = (MaxRayDistance * ray.direction) + ray.start; }
 
-                    Debug.DrawRay(ray.start, rayEnd - ray.start, Color.yellow);
                     // Draw the ray if it's past the min bounce threshold
                     if (ray.bounces >= MinBounces)
                     {
@@ -121,8 +116,6 @@ namespace LiteralRaytrace
                         {
                             screenspaceStart = screenspaceStart,
                             screenspaceDelta = screenspaceDelta,
-                            worldspaceLength = (rayEnd - ray.start).magnitude,
-                            normalizedStartIntensity = NormalizeIntensity(ray.startIntensity),
                             color = ray.color
                         });
                     }
@@ -130,8 +123,6 @@ namespace LiteralRaytrace
                     // Finally, queue a new ray if it will bounce
                     if (hit && ray.bounces < MaxBounces)
                     {
-                        var newStartIntensity = Attenuation(hitinfo.distance) * ray.startIntensity;
-
                         var material = GetOrAddCachedMaterial(hitinfo);
                         var albedo = SampleTexture(material.albedo, hitinfo.textureCoord);
 
@@ -141,7 +132,6 @@ namespace LiteralRaytrace
                         {
                             start = hitinfo.point,
                             direction = Vector3.Reflect(ray.direction, hitinfo.normal),
-                            startIntensity = newStartIntensity,
                             color = ray.color * albedo,
                             bounces = ray.bounces + 1
                         });
@@ -180,6 +170,9 @@ namespace LiteralRaytrace
             var screen = camera.WorldToScreenPoint(world);
             if (screen.z < 0)
             {
+                // When a point behind the camera is projected onto the screen, its
+                // screenspace xy position is mirrored about the center of the screen.
+                // Correct that.
                 var center = new Vector3(Screen.width / 2, Screen.height / 2, 0);
                 var diff = center - screen;
                 screen.x += 2 * diff.x;
@@ -196,6 +189,9 @@ namespace LiteralRaytrace
             var sign = 1;
             if (linDepth < 0)
             {
+                // when dealing with points behind the camera, this inverse linear depth function
+                // starts to get messed up. To deal with that, negate the depth, do the calculation as normal,
+                // then correct later.
                 linDepth = -linDepth;
                 sign = -1;
             }
@@ -208,18 +204,6 @@ namespace LiteralRaytrace
         private float NormalizeIntensity(float intensity)
         {
             return Mathf.Clamp((intensity - IntensityLowerBound) / (IntensityUpperBound - IntensityLowerBound), 0, 1);
-        }
-
-        // Explanation here https://gamedev.stackexchange.com/questions/131372/light-attenuation-formula-derivation
-        private static float Attenuation(float distance)
-        {
-            return 1.0f / (1.0f + distance * distance);
-        }
-
-        // Gets the distance required to create a given attenuation value
-        private static float InvAttenuation(float attenuation)
-        {
-            return Mathf.Sqrt((1.0f / attenuation) - 1.0f);
         }
 
         private static float EVToIntensity(float ev)

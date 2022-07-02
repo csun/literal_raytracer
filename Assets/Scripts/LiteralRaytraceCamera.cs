@@ -74,7 +74,8 @@ namespace LiteralRaytrace
                     nextLight = (nextLight + 1) % lights.Length;
 
                     var randRotation = Quaternion.AngleAxis(Random.Range(0, 360), light.transform.forward);
-                    randRotation *= Quaternion.AngleAxis(Random.Range(0, light.spotAngle / 2), light.transform.up);
+                    randRotation *= Quaternion.AngleAxis(
+                        RandomGaussian(0.5f, 0.3f, 0, 1)* light.spotAngle / 2, light.transform.up);
 
                     castQueue.Enqueue(new CameraRay
                     {
@@ -210,6 +211,30 @@ namespace LiteralRaytrace
         {
             // In HDRP, it appears that intensity 1 == EV 3. We want to match that.
             return Mathf.Pow(2, ev - 3);
+        }
+
+        // From https://github.com/VoxusSoftware/unity-random/blob/master/Assets/Voxus/Random/RandomGaussian.cs
+        private static float RandomGaussian(float sigma, float mu, float min = float.MinValue, float max = float.MaxValue)
+        {
+            float x1, x2, w, y1, candidate;
+
+            do
+            {
+                do
+                {
+                    x1 = 2f * Random.value - 1f;
+                    x2 = 2f * Random.value - 1f;
+                    w = x1 * x1 + x2 * x2;
+                } while (w >= 1f);
+
+                w = Mathf.Sqrt((-2f * Mathf.Log(w)) / w);
+                y1 = x1 * w;
+
+                candidate = (y1 * sigma) + mu;
+
+            } while (candidate < min || candidate > max);
+
+            return candidate;
         }
     }
 }

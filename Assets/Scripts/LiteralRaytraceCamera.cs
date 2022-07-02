@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.Assertions;
@@ -53,7 +54,10 @@ namespace LiteralRaytrace
         {
             camera = GetComponent<Camera>();
             camera.depthTextureMode = DepthTextureMode.Depth;
-            lights = FindObjectsOfType<Light>();
+            lights = FindObjectsOfType<LiteralRaytraceLight>()
+                .Where(l => l.gameObject.activeInHierarchy)
+                .Select(l => l.GetComponent<Light>())
+                .ToArray();
         }
 
         private void Update()
@@ -178,7 +182,8 @@ namespace LiteralRaytrace
             {
                 var center = new Vector3(Screen.width / 2, Screen.height / 2, 0);
                 var diff = center - screen;
-                screen += 2 * diff;
+                screen.x += 2 * diff.x;
+                screen.y += 2 * diff.y;
             }
             screen.z = InverseLinearEyeDepth(screen.z);
 

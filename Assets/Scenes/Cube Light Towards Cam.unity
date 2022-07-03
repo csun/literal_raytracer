@@ -134,6 +134,7 @@ GameObject:
   - component: {fileID: 97137714}
   - component: {fileID: 97137713}
   - component: {fileID: 97137712}
+  - component: {fileID: 97137715}
   m_Layer: 0
   m_Name: Directional Light
   m_TagString: Untagged
@@ -333,12 +334,24 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 97137711}
   m_LocalRotation: {x: 0.96950436, y: 0.24091202, z: -0.035843477, w: 0.02716723}
-  m_LocalPosition: {x: -1.168, y: 2.061, z: -2.611}
+  m_LocalPosition: {x: -1.2, y: 2.07, z: -2.76}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 4.011, y: 183.242, z: 152.204}
+--- !u!114 &97137715
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 97137711}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 978bb0dfac87f8c40bc8a338099277d2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &694501243
 GameObject:
   m_ObjectHideFlags: 1
@@ -535,7 +548,7 @@ Light:
   serializedVersion: 10
   m_Type: 0
   m_Shape: 0
-  m_Color: {r: 0, g: 1, b: 0.0022239685, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Intensity: 8192
   m_Range: 10
   m_SpotAngle: 33.5
@@ -594,7 +607,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1604284861}
   m_LocalRotation: {x: -0.060216926, y: -0.13372067, z: -0.9604079, w: 0.23687421}
-  m_LocalPosition: {x: -4.33, y: 3.06, z: -13.78}
+  m_LocalPosition: {x: -2.01, y: -1.14, z: -12.66}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -690,7 +703,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1703179633}
   m_LocalRotation: {x: -0.6326126, y: -0.091960914, z: 0.25362852, w: 0.72595954}
-  m_LocalPosition: {x: -0.849, y: 1.315, z: -4.179}
+  m_LocalPosition: {x: -0.88100004, y: 1.3239999, z: -4.328}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -712,8 +725,12 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1084870984071425496, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
+      propertyPath: MaxRayDistance
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 1084870984071425496, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
       propertyPath: ActiveRayTarget
-      value: 1
+      value: 100
       objectReference: {fileID: 0}
     - target: {fileID: 1084870984071425496, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
       propertyPath: IntensityUpperBound
@@ -764,8 +781,8 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2094342857388402104, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
-      propertyPath: customPasses.Array.data[0].blendAmount
-      value: 0.5
+      propertyPath: customPasses.Array.data[0].BlendAmount
+      value: 0.7
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}

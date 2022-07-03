@@ -39,7 +39,6 @@ namespace LiteralRaytrace
         public List<DrawRay> RaysToDraw = new List<DrawRay>();
 
         public float IntensityUpperBound = EVToIntensity(16);
-        public float IntensityLowerBound = EVToIntensity(1);
 
         private Queue<CameraRay> castQueue = new Queue<CameraRay>();
         private Dictionary<int, CachedMaterial> materialCache = new Dictionary<int, CachedMaterial>();
@@ -75,7 +74,7 @@ namespace LiteralRaytrace
 
                     var randRotation = Quaternion.AngleAxis(Random.Range(0, 360), light.transform.forward);
                     randRotation *= Quaternion.AngleAxis(
-                        RandomGaussian(0.5f, 0.3f, 0, 1)* light.spotAngle / 2, light.transform.up);
+                        RandomGaussian(0.33f, 0, -1, 1)* light.spotAngle / 2, light.transform.up);
 
                     castQueue.Enqueue(new CameraRay
                     {
@@ -109,16 +108,7 @@ namespace LiteralRaytrace
                     // Draw the ray if it's past the min bounce threshold
                     if (ray.bounces >= MinBounces)
                     {
-                        var screenspaceStart = WorldToScreen(ray.start);
-                        var screenspaceEnd = WorldToScreen(rayEnd);
-                        var screenspaceDelta = screenspaceEnd - screenspaceStart;
-
-                        RaysToDraw.Add(new DrawRay
-                        {
-                            screenspaceStart = screenspaceStart,
-                            screenspaceDelta = screenspaceDelta,
-                            color = ray.color
-                        });
+                        AddDrawRay(ray, rayEnd);
                     }
 
                     // Finally, queue a new ray if it will bounce
@@ -139,6 +129,42 @@ namespace LiteralRaytrace
                     }
                 }
             }
+        }
+
+        private void AddDrawRay(CameraRay ray, Vector3 rayEnd)
+        {
+            // Screenspace math starts to get really weird if we're drawing a line from a point behind
+            // the camera. Make sure that we just shorten the ray to where it crosses the xy plane rather than
+            // letting it do this.
+            var croppedRayStart = CropRayStartToPositiveCameraZ(ray.start, rayEnd);
+            var croppedRayEnd = CropRayStartToPositiveCameraZ(rayEnd, ray.start);
+
+            if (croppedRayStart.HasValue && croppedRayEnd.HasValue)
+            {
+                var screenspaceStart = WorldToScreen(croppedRayStart.Value);
+                var screenspaceEnd = WorldToScreen(croppedRayEnd.Value);
+                var screenspaceDelta = screenspaceEnd - screenspaceStart;
+
+                RaysToDraw.Add(new DrawRay
+                {
+                    screenspaceStart = screenspaceStart,
+                    screenspaceDelta = screenspaceDelta,
+                    color = ray.color
+                });
+            }
+        }
+
+        private Vector3? CropRayStartToPositiveCameraZ(Vector3 start, Vector3 end)
+        {
+            var localStart = camera.transform.InverseTransformPoint(start);
+            var localEnd = camera.transform.InverseTransformPoint(end);
+            if (localStart.z > 0) { return start; }
+            else if (localStart.z < 0 && localEnd.z < 0) { return null; }
+
+            var delta = localEnd - localStart;
+            var ratio = -localStart.z / delta.z;
+
+            return camera.transform.TransformPoint(localStart + (ratio * delta));
         }
 
         private Color SampleTexture(Texture2D tex, Vector2 uv)
@@ -179,6 +205,9 @@ namespace LiteralRaytrace
                 screen.x += 2 * diff.x;
                 screen.y += 2 * diff.y;
             }
+
+            // Converting to nonlinear depth allows us to calculate depth linearly as we move along
+            // the line in screenspace, which is what we do in the sampling shader.
             screen.z = InverseLinearEyeDepth(screen.z);
 
             return screen;
@@ -188,6 +217,8 @@ namespace LiteralRaytrace
         private float InverseLinearEyeDepth(float linDepth)
         {
             var sign = 1;
+
+            // TODO figure out why we still need this
             if (linDepth < 0)
             {
                 // when dealing with points behind the camera, this inverse linear depth function
@@ -204,7 +235,7 @@ namespace LiteralRaytrace
 
         private float NormalizeIntensity(float intensity)
         {
-            return Mathf.Clamp((intensity - IntensityLowerBound) / (IntensityUpperBound - IntensityLowerBound), 0, 1);
+            return Mathf.Clamp(intensity / IntensityUpperBound, 0, 1);
         }
 
         private static float EVToIntensity(float ev)

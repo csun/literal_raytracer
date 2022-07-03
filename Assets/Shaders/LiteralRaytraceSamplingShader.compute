@@ -44,7 +44,6 @@ void SampleRays (uint3 id : SV_DispatchThreadID)
 		totalBrightness += currentLuminance;
 
 		float3 candidateColor = ((_RayColors[i] * currentLuminance) + (avgColor * prevTotalLuminance)) / totalBrightness;
-
 		avgColor = shouldDraw ? candidateColor : avgColor;
 	}
 

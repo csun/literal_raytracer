@@ -239,7 +239,7 @@ MonoBehaviour:
         clearFlags: 0
         passFoldout: 0
         m_Version: 0
-        RaytraceCamera: {fileID: 0}
+        RaytraceCamera: {fileID: 1084870984071425496}
         SamplingShader: {fileID: 7200000, guid: c1e60718fabdb874581cd2f3ca5b25d2, type: 3}
         BrightnessPyramidShader: {fileID: 7200000, guid: e9af285e6ed3e4e4b9cafb076ae2ffbf, type: 3}
         DrawMaterial: {fileID: 2100000, guid: 88f5bc07884d9364aacabdab2b1ce72e, type: 2}

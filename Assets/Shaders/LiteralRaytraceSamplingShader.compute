@@ -1,12 +1,11 @@
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
 #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl" // for TEXTURE2D_X() and RW_TEXTURE2D_X
 
-#pragma kernel CSMain
+#pragma kernel SampleRays
 #define MAX_RAYS 256
 
-// Create a RenderTexture with enableRandomWrite flag and set it
-// with cs.SetTexture
-RWTexture2D<float4> _ColorAndTotals;
+RWTexture2D<float3> _Color;
+RWTexture2D<float> _TotalBrightness;
 
 float3 _SSRayStarts[MAX_RAYS];
 float3 _SSRayDeltas[MAX_RAYS];
@@ -15,10 +14,10 @@ int _RayCount;
 
 
 [numthreads(8,8,1)]
-void CSMain (uint3 id : SV_DispatchThreadID)
+void SampleRays (uint3 id : SV_DispatchThreadID)
 {
-	float3 avgColor = _ColorAndTotals[id.xy].xyz;
-	float totalLuminance = _ColorAndTotals[id.xy].a;
+	float3 avgColor = _Color[id.xy];
+	float totalBrightness = _TotalBrightness[id.xy];
 	// By default, camera depth is reversed (0 is far plane, 1 is near plane)
 	float sceneDepth = 1 - LoadCameraDepth(id.xy);
 
@@ -41,13 +40,14 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 			(linePoint.z >= 0);
 
 		float currentLuminance = shouldDraw * length(_RayColors[i]);
-		float prevTotalLuminance = totalLuminance;
-		totalLuminance += currentLuminance;
+		float prevTotalLuminance = totalBrightness;
+		totalBrightness += currentLuminance;
 
-		float3 candidateColor = ((_RayColors[i] * currentLuminance) + (avgColor * prevTotalLuminance)) / totalLuminance;
+		float3 candidateColor = ((_RayColors[i] * currentLuminance) + (avgColor * prevTotalLuminance)) / totalBrightness;
 
 		avgColor = shouldDraw ? candidateColor : avgColor;
 	}
 
-	_ColorAndTotals[id.xy] = float4(avgColor, totalLuminance);
+	_Color[id.xy] = avgColor;
+	_TotalBrightness[id.xy] = totalBrightness;
 }

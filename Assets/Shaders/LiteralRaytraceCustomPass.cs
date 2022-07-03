@@ -9,10 +9,12 @@ class LiteralRaytraceCustomPass : CustomPass
 
     public LiteralRaytraceCamera RaytraceCamera;
     public ComputeShader SamplingShader;
+    public ComputeShader BrightnessPyramidShader;
     public Material DrawMaterial;
     public float blendAmount = 1;
 
-    RenderTexture colorAndTotals;
+    RenderTexture sampledColor;
+    RenderTexture sampledTotalBrightness;
 
     Vector4[] screenspaceRayStartBuf = new Vector4[MAX_RAYS];
     Vector4[] screenspaceRayDeltaBuf = new Vector4[MAX_RAYS];
@@ -33,14 +35,16 @@ class LiteralRaytraceCustomPass : CustomPass
         ReinitializeTextures();
         LoadRayBuffers();
 
-        SamplingShader.SetTexture(0, "_ColorAndTotals", colorAndTotals);
+        SamplingShader.SetTexture(0, "_Color", sampledColor);
+        SamplingShader.SetTexture(0, "_TotalBrightness", sampledTotalBrightness);
         SamplingShader.SetVectorArray("_SSRayStarts", screenspaceRayStartBuf);
         SamplingShader.SetVectorArray("_SSRayDeltas", screenspaceRayDeltaBuf);
         SamplingShader.SetVectorArray("_RayColors", rayColorBuf);
         SamplingShader.SetInt("_RayCount", RaytraceCamera.RaysToDraw.Count);
         ctx.cmd.DispatchCompute(SamplingShader, 0, Screen.width / 8, Screen.height / 8, 1);
 
-        DrawMaterial.SetTexture("_ColorAndTotals", colorAndTotals);
+        DrawMaterial.SetTexture("_SampledColor", sampledColor);
+        DrawMaterial.SetTexture("_SampledTotalBrightness", sampledTotalBrightness);
         DrawMaterial.SetFloat("_BlendAmount", blendAmount);
         SetRenderTargetAuto(ctx.cmd);
         CoreUtils.DrawFullScreen(ctx.cmd, DrawMaterial);
@@ -48,22 +52,31 @@ class LiteralRaytraceCustomPass : CustomPass
 
     private void ReinitializeTextures()
     {
-        if (colorAndTotals == null || colorAndTotals.width != Screen.width || colorAndTotals.height != Screen.height)
+        if (sampledColor == null || sampledColor.width != Screen.width || sampledColor.height != Screen.height)
         {
             DestroyTextures();
 
-            colorAndTotals = new RenderTexture(
-                Screen.width, Screen.height, 0, RenderTextureFormat.ARGBFloat, RenderTextureReadWrite.Linear);
-            colorAndTotals.enableRandomWrite = true;
-            colorAndTotals.Create();
+            sampledColor = new RenderTexture(
+                Screen.width, Screen.height, 0, RenderTextureFormat.RGB111110Float, RenderTextureReadWrite.Linear);
+            sampledColor.enableRandomWrite = true;
+            sampledColor.Create();
+
+            sampledTotalBrightness = new RenderTexture(
+                Screen.width, Screen.height, 0, RenderTextureFormat.RFloat, RenderTextureReadWrite.Linear);
+            sampledTotalBrightness.enableRandomWrite = true;
+            sampledTotalBrightness.Create();
         }
     }
 
     void DestroyTextures()
     {
-        if (colorAndTotals != null)
+        if (sampledColor != null)
         {
-            colorAndTotals.Release();
+            sampledColor.Release();
+        }
+        if (sampledTotalBrightness != null)
+        {
+            sampledTotalBrightness.Release();
         }
     }
 

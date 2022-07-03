@@ -10,16 +10,15 @@ Shader "FullScreen/LiteralRaytraceShader"
 	#include "Packages/com.unity.render-pipelines.high-definition/Runtime/RenderPipeline/RenderPass/CustomPass/CustomPassCommon.hlsl"
 
 	// Sample count in alpha channel
-	Texture2D<float4> _ColorAndTotals;
+	Texture2D<float3> _SampledColor;
+	Texture2D<float> _SampledTotalBrightness;
 	float _BlendAmount;
 
 	float4 ColorPass(Varyings varyings) : SV_Target
 	{
-		// Need to add Properties block if want to edit material properties in inspector https://docs.unity3d.com/Manual/SL-Properties.html
-		// positionCS is normalized [0, 1] screenspace position
-		// depth appears to be in world units
-		float4 col = _ColorAndTotals[varyings.positionCS.xy];
-		col.a = _BlendAmount;
+		float4 col = float4(
+			_SampledColor[varyings.positionCS.xy] * clamp(_SampledTotalBrightness[varyings.positionCS.xy] / 500, 0, 1),
+			_BlendAmount);
 
 		return col;
 	}

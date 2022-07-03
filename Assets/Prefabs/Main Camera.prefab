@@ -203,10 +203,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0c1edc325bac44040b274cc68eb7e5e6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ActiveRayTarget: 100
+  ActiveRayTarget: 128
   MinBounces: 1
   MaxBounces: 16
-  IntensityUpperBound: 4
+  MaxRayDistance: 1000
+  IntensityUpperBound: 1
   IntensityLowerBound: 0.25
 --- !u!114 &2094342857388402104
 MonoBehaviour:
@@ -238,7 +239,8 @@ MonoBehaviour:
         clearFlags: 0
         passFoldout: 0
         m_Version: 0
-        RaytraceCamera: {fileID: 1084870984071425496}
+        RaytraceCamera: {fileID: 0}
         SamplingShader: {fileID: 7200000, guid: c1e60718fabdb874581cd2f3ca5b25d2, type: 3}
+        BrightnessPyramidShader: {fileID: 7200000, guid: e9af285e6ed3e4e4b9cafb076ae2ffbf, type: 3}
         DrawMaterial: {fileID: 2100000, guid: 88f5bc07884d9364aacabdab2b1ce72e, type: 2}
-        blendAmount: 1
+        BlendAmount: 0.5

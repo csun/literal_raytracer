@@ -12,15 +12,13 @@ Shader "FullScreen/LiteralRaytraceShader"
 	// Sample count in alpha channel
 	Texture2D<float3> _SampledColor;
 	Texture2D<float> _SampledTotalBrightness;
+	Texture2D<float> _BrightnessPyramid;
 	float _BlendAmount;
 
 	float4 ColorPass(Varyings varyings) : SV_Target
 	{
-		float4 col = float4(
-			_SampledColor[varyings.positionCS.xy] * clamp(_SampledTotalBrightness[varyings.positionCS.xy] / 500, 0, 1),
-			_BlendAmount);
-
-		return col;
+		float brightness = clamp(_SampledTotalBrightness[varyings.positionCS.xy] / _BrightnessPyramid[uint2(0,0)], 0, 1);
+		return float4( _SampledColor[varyings.positionCS.xy] * brightness, _BlendAmount);
 	}
 
 		ENDHLSL

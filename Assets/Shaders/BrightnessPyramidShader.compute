@@ -8,8 +8,6 @@ RWTexture2D<float> _Output;
 [numthreads(GROUP_SIZE, GROUP_SIZE, 1)]
 void BrightnessPyramid(uint3 id : SV_DispatchThreadID)
 {
-	// TODO change other shaders so that the total luminance map is separate texture not alpha channel
-
 	float brightest = 0;
 	uint3 start = id * THREAD_REGION_SIZE;
 
@@ -22,8 +20,4 @@ void BrightnessPyramid(uint3 id : SV_DispatchThreadID)
 	}
 
 	_Output[id.xy] = brightest;
-
-	// TODO queue this compute shader to run the correct number of times to cover screen
-	// TODO At beginning, input is the total luminance map. After, it's the previous output channel
-	// TODO at end brightest pixel at 0,0
 }

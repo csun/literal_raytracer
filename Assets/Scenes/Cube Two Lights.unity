@@ -230,6 +230,7 @@ GameObject:
   - component: {fileID: 97137714}
   - component: {fileID: 97137713}
   - component: {fileID: 97137712}
+  - component: {fileID: 97137715}
   m_Layer: 0
   m_Name: Directional Light
   m_TagString: Untagged
@@ -435,6 +436,18 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
+--- !u!114 &97137715
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 97137711}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 978bb0dfac87f8c40bc8a338099277d2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &694501243
 GameObject:
   m_ObjectHideFlags: 1
@@ -480,6 +493,17 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1024966178 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1084870984071425496, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
+  m_PrefabInstance: {fileID: 1084870985731422289}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c1edc325bac44040b274cc68eb7e5e6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1141293261
 GameObject:
   m_ObjectHideFlags: 0
@@ -587,6 +611,7 @@ GameObject:
   - component: {fileID: 1504972111}
   - component: {fileID: 1504972110}
   - component: {fileID: 1504972109}
+  - component: {fileID: 1504972112}
   m_Layer: 0
   m_Name: Directional Light (1)
   m_TagString: Untagged
@@ -792,6 +817,18 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 84.394, y: 151.09, z: 136.99}
+--- !u!114 &1504972112
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1504972108}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 978bb0dfac87f8c40bc8a338099277d2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1703179633
 GameObject:
   m_ObjectHideFlags: 0
@@ -948,8 +985,8 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2094342857388402104, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
-      propertyPath: customPasses.Array.data[0].blendAmount
-      value: 0.5
-      objectReference: {fileID: 0}
+      propertyPath: customPasses.Array.data[0].RaytraceCamera
+      value: 
+      objectReference: {fileID: 1024966178}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}

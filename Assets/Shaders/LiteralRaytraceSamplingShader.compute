@@ -37,7 +37,7 @@ void SampleRays (uint3 id : SV_DispatchThreadID)
 		bool shouldDraw = (roundedLinePoint.x == id.x) &&
 			(roundedLinePoint.y == id.y) &&
 			(linePoint.z < sceneDepth) &&
-			(linePoint.z >= 0);
+			(linePoint.z > 0);
 
 		float currentLuminance = shouldDraw * length(_RayColors[i]);
 		float prevTotalLuminance = totalBrightness;

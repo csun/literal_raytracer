@@ -216,21 +216,17 @@ namespace LiteralRaytrace
         // The inverse of shader function LinearEyeDepth()
         private float InverseLinearEyeDepth(float linDepth)
         {
-            var sign = 1;
-
-            // TODO figure out why we still need this
             if (linDepth < 0)
             {
-                // when dealing with points behind the camera, this inverse linear depth function
-                // starts to get messed up. To deal with that, negate the depth, do the calculation as normal,
-                // then correct later.
-                linDepth = -linDepth;
-                sign = -1;
+                // When dealing with points behind the camera, this inverse linear depth function
+                // starts to get messed up. To deal with that, just return 0. We correct for
+                // points extending behind the camera in worldspace so this should not cause much error.
+                return 0;
             }
 
             var near = camera.nearClipPlane;
             var far = camera.farClipPlane;
-            return sign * ((1.0f / linDepth) - (1.0f / near)) / ((1.0f / far) - (1.0f / near));
+            return ((1.0f / linDepth) - (1.0f / near)) / ((1.0f / far) - (1.0f / near));
         }
 
         private float NormalizeIntensity(float intensity)

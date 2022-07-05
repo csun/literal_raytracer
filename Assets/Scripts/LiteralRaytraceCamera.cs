@@ -23,7 +23,37 @@ namespace LiteralRaytrace
 
     public class CachedMaterial
     {
-        public Texture2D albedo;
+        Texture2D albedoMap;
+        Texture2D maskMap;
+        Color baseColor;
+        Vector2 smoothnessRange;
+
+        public CachedMaterial(Material material)
+        {
+            albedoMap = (Texture2D)material.GetTexture("_BaseColorMap");
+            maskMap = (Texture2D)material.GetTexture("_MaskMap");
+            baseColor = material.GetColor("_BaseColor");
+            smoothnessRange = new Vector2(
+                material.GetFloat("_SmoothnessRemapMin"),
+                material.GetFloat("_SmoothnessRemapMax"));
+        }
+
+        public Color SampleAlbedo(Vector2 uv)
+        {
+            return SampleTexture(albedoMap, uv) * baseColor;
+        }
+
+        private Color SampleTexture(Texture2D tex, Vector2 uv)
+        {
+            if (tex == null)
+            {
+                return Color.white;
+            }
+
+            uv.x *= tex.width;
+            uv.y *= tex.height;
+            return tex.GetPixel(Mathf.FloorToInt(uv.x), Mathf.FloorToInt(uv.y));
+        }
     }
 
     public class LiteralRaytraceCamera : MonoBehaviour
@@ -115,7 +145,7 @@ namespace LiteralRaytrace
                     if (hit && ray.bounces < MaxBounces)
                     {
                         var material = GetOrAddCachedMaterial(hitinfo);
-                        var albedo = SampleTexture(material.albedo, hitinfo.textureCoord);
+                        var albedo = material.SampleAlbedo(hitinfo.textureCoord);
 
                         // TODO take normal map at point into account
 
@@ -167,26 +197,17 @@ namespace LiteralRaytrace
             return camera.transform.TransformPoint(localStart + (ratio * delta));
         }
 
-        private Color SampleTexture(Texture2D tex, Vector2 uv)
-        {
-            uv.x *= tex.width;
-            uv.y *= tex.height;
-            return tex.GetPixel(Mathf.FloorToInt(uv.x), Mathf.FloorToInt(uv.y));
-        }
-
         private CachedMaterial GetOrAddCachedMaterial(RaycastHit hitinfo)
         {
             var gameObject = hitinfo.collider.gameObject;
+
             var id = gameObject.GetInstanceID();
             if (!materialCache.ContainsKey(id))
             {
                 var material = gameObject.GetComponent<Renderer>().material;
                 Assert.AreEqual(material.shader.name, "HDRP/Lit");
 
-                materialCache[id] = new CachedMaterial
-                {
-                    albedo = (Texture2D)material.GetTexture("_BaseColorMap")
-                };
+                materialCache[id] = new CachedMaterial(material);
             }
 
             return materialCache[id];

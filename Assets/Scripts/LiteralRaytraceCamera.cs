@@ -43,6 +43,16 @@ namespace LiteralRaytrace
             return SampleTexture(albedoMap, uv) * baseColor;
         }
 
+        public float SampleSmoothness(Vector2 uv)
+        {
+            if (maskMap == null)
+            {
+                return (smoothnessRange.x + smoothnessRange.y) / 2;
+            }
+            var sample = SampleTexture(maskMap, uv).a;
+            return (smoothnessRange.y - smoothnessRange.x) * sample + smoothnessRange.x;
+        }
+
         private Color SampleTexture(Texture2D tex, Vector2 uv)
         {
             if (tex == null)
@@ -102,14 +112,13 @@ namespace LiteralRaytrace
                     var light = lights[nextLight];
                     nextLight = (nextLight + 1) % lights.Length;
 
-                    var randRotation = Quaternion.AngleAxis(Random.Range(0, 360), light.transform.forward);
-                    randRotation *= Quaternion.AngleAxis(
-                        RandomGaussian(0.33f, 0, -1, 1)* light.spotAngle / 2, light.transform.up);
+                    var direction = RandomConeDirection(
+                        light.spotAngle, light.spotAngle / 6, light.transform.forward);
 
                     castQueue.Enqueue(new CameraRay
                     {
                         start = light.transform.position,
-                        direction = randRotation * light.transform.forward,
+                        direction = direction,
                         color = light.color * NormalizeIntensity(light.intensity)
                     });
                 }
@@ -146,13 +155,17 @@ namespace LiteralRaytrace
                     {
                         var material = GetOrAddCachedMaterial(hitinfo);
                         var albedo = material.SampleAlbedo(hitinfo.textureCoord);
+                        var smoothnessSigma = (1 - material.SampleSmoothness(hitinfo.textureCoord)) * 30;
 
-                        // TODO take normal map at point into account
+                        var randomizedNormal = RandomConeDirection(180, smoothnessSigma, hitinfo.normal);
+
+                        // TODO randomize normal based on smoothness
+                        // TODO offset start point along surface normal a couple mm or so so that new rays can escape
 
                         castQueue.Enqueue(new CameraRay
                         {
                             start = hitinfo.point,
-                            direction = Vector3.Reflect(ray.direction, hitinfo.normal),
+                            direction = Vector3.Reflect(ray.direction, randomizedNormal),
                             color = ray.color * albedo,
                             bounces = ray.bounces + 1
                         });
@@ -259,6 +272,15 @@ namespace LiteralRaytrace
         {
             // In HDRP, it appears that intensity 1 == EV 3. We want to match that.
             return Mathf.Pow(2, ev - 3);
+        }
+
+        private Vector3 RandomConeDirection(float maxAngle, float sigma, Vector3 origDirection)
+        {
+            var origRotation = Quaternion.FromToRotation(Vector3.forward, origDirection);
+            return origRotation *
+                Quaternion.AngleAxis(Random.Range(0, 360), Vector3.forward) *
+                Quaternion.AngleAxis(RandomGaussian(sigma, 0, -maxAngle / 2, maxAngle / 2), Vector3.up) *
+                Vector3.forward;
         }
 
         // From https://github.com/VoxusSoftware/unity-random/blob/master/Assets/Voxus/Random/RandomGaussian.cs

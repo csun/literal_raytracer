@@ -26,14 +26,16 @@ namespace LiteralRaytrace
         Texture2D albedoMap;
         Texture2D maskMap;
         Color baseColor;
-        Vector2 smoothnessRange;
+        float noMapSmoothness;
+        Vector2 mapSmoothnessRange;
 
         public CachedMaterial(Material material)
         {
             albedoMap = (Texture2D)material.GetTexture("_BaseColorMap");
             maskMap = (Texture2D)material.GetTexture("_MaskMap");
             baseColor = material.GetColor("_BaseColor");
-            smoothnessRange = new Vector2(
+            noMapSmoothness = material.GetFloat("_Smoothness");
+            mapSmoothnessRange = new Vector2(
                 material.GetFloat("_SmoothnessRemapMin"),
                 material.GetFloat("_SmoothnessRemapMax"));
         }
@@ -47,10 +49,10 @@ namespace LiteralRaytrace
         {
             if (maskMap == null)
             {
-                return (smoothnessRange.x + smoothnessRange.y) / 2;
+                return noMapSmoothness;
             }
             var sample = SampleTexture(maskMap, uv).a;
-            return (smoothnessRange.y - smoothnessRange.x) * sample + smoothnessRange.x;
+            return (mapSmoothnessRange.y - mapSmoothnessRange.x) * sample + mapSmoothnessRange.x;
         }
 
         private Color SampleTexture(Texture2D tex, Vector2 uv)
@@ -155,20 +157,25 @@ namespace LiteralRaytrace
                     {
                         var material = GetOrAddCachedMaterial(hitinfo);
                         var albedo = material.SampleAlbedo(hitinfo.textureCoord);
-                        var smoothnessSigma = (1 - material.SampleSmoothness(hitinfo.textureCoord)) * 30;
+
+                        // We use smoothness to determine the sigma of the random noise applied to the direction
+                        // that the reflected ray will bounce. This constant multiplier is arbitrarily chosen
+                        var smoothnessSigma = (1 - material.SampleSmoothness(hitinfo.textureCoord)) * 60;
 
                         var randomizedNormal = RandomConeDirection(180, smoothnessSigma, hitinfo.normal);
+                        var reflected = Vector3.Reflect(ray.direction, randomizedNormal);
 
-                        // TODO randomize normal based on smoothness
-                        // TODO offset start point along surface normal a couple mm or so so that new rays can escape
-
-                        castQueue.Enqueue(new CameraRay
+                        // TODO model some other sort of effect for when reflected ray goes into surface
+                        if (Vector3.Dot(reflected, hitinfo.normal) > 0)
                         {
-                            start = hitinfo.point,
-                            direction = Vector3.Reflect(ray.direction, randomizedNormal),
-                            color = ray.color * albedo,
-                            bounces = ray.bounces + 1
-                        });
+                            castQueue.Enqueue(new CameraRay
+                            {
+                                start = hitinfo.point,
+                                direction = reflected,
+                                color = ray.color * albedo,
+                                bounces = ray.bounces + 1
+                            });
+                        }
                     }
                 }
             }

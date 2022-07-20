@@ -23,15 +23,17 @@ namespace LiteralRaytrace
 
     public class CachedMaterial
     {
-        Texture2D albedoMap;
+        Texture2D baseMap;
         Texture2D maskMap;
         Color baseColor;
         float noMapSmoothness;
+        float noMapMetallic;
         Vector2 mapSmoothnessRange;
+        Vector2 mapMetallicRange;
 
         public CachedMaterial(Material material)
         {
-            albedoMap = (Texture2D)material.GetTexture("_BaseColorMap");
+            baseMap = (Texture2D)material.GetTexture("_BaseColorMap");
             maskMap = (Texture2D)material.GetTexture("_MaskMap");
             baseColor = material.GetColor("_BaseColor");
             noMapSmoothness = material.GetFloat("_Smoothness");
@@ -40,9 +42,19 @@ namespace LiteralRaytrace
                 material.GetFloat("_SmoothnessRemapMax"));
         }
 
-        public Color SampleAlbedo(Vector2 uv)
+        public Color SampleBaseColor(Vector2 uv)
         {
-            return SampleTexture(albedoMap, uv) * baseColor;
+            return SampleTexture(baseMap, uv) * baseColor;
+        }
+
+        public float SampleMetallic(Vector2 uv)
+        {
+            if (maskMap == null)
+            {
+                return noMapMetallic;
+            }
+            var sample = SampleTexture(maskMap, uv).r;
+            return (mapMetallicRange.y - mapMetallicRange.x) * sample + mapMetallicRange.x;
         }
 
         public float SampleSmoothness(Vector2 uv)
@@ -76,6 +88,7 @@ namespace LiteralRaytrace
         public int ActiveRayTarget = 100;
         public int MinBounces = 1;
         public int MaxBounces = 16;
+        public float MinBrightness = 0.0001f;
         public float MaxRayDistance = 1000;
         [HideInInspector]
         public List<DrawRay> RaysToDraw = new List<DrawRay>();
@@ -114,7 +127,7 @@ namespace LiteralRaytrace
                     var light = lights[nextLight];
                     nextLight = (nextLight + 1) % lights.Length;
 
-                    var direction = RandomConeDirection(
+                    var direction = RandomConeDirectionNormal(
                         light.spotAngle, light.spotAngle / 6, light.transform.forward);
 
                     castQueue.Enqueue(new CameraRay
@@ -131,7 +144,7 @@ namespace LiteralRaytrace
         {
             using (processRayPerfMarker.Auto())
             {
-                var raysToProcess = castQueue.Count;
+                var raysToProcess = Mathf.Max(ActiveRayTarget, castQueue.Count);
                 RaysToDraw.Clear();
 
                 for (var i = 0; i < raysToProcess; i++)
@@ -156,23 +169,48 @@ namespace LiteralRaytrace
                     if (hit && ray.bounces < MaxBounces)
                     {
                         var material = GetOrAddCachedMaterial(hitinfo);
-                        var albedo = material.SampleAlbedo(hitinfo.textureCoord);
+                        var baseColor = material.SampleBaseColor(hitinfo.textureCoord);
+                        var metallicRatio = material.SampleMetallic(hitinfo.textureCoord);
 
                         // We use smoothness to determine the sigma of the random noise applied to the direction
                         // that the reflected ray will bounce. This constant multiplier is arbitrarily chosen
-                        var smoothnessSigma = (1 - material.SampleSmoothness(hitinfo.textureCoord)) * 60;
+                        var smoothnessSigma = (1 - material.SampleSmoothness(hitinfo.textureCoord)) * 20;
 
-                        var randomizedNormal = RandomConeDirection(180, smoothnessSigma, hitinfo.normal);
-                        var reflected = Vector3.Reflect(ray.direction, randomizedNormal);
+                        var randomizedNormal = RandomConeDirectionNormal(180, smoothnessSigma, hitinfo.normal);
+                        var reflectedRay = Vector3.Reflect(ray.direction, randomizedNormal);
 
-                        // TODO model some other sort of effect for when reflected ray goes into surface
-                        if (Vector3.Dot(reflected, hitinfo.normal) > 0)
+                        // F0 is fresnel reflectance ratio at 0 degrees. The defaults here are estimates for dielectric and metallic surfaces.
+                        // See https://substance3d.adobe.com/tutorials/courses/the-pbr-guide-part-1
+                        var effectiveF0 = Mathf.Lerp(0.04f, 0.8f, metallicRatio);
+
+                        // Fresnel equation
+                        var reflectedAmt = effectiveF0 + (1 - effectiveF0) * Mathf.Pow(1 - Vector3.Dot(randomizedNormal, reflectedRay), 5);
+                        // Metallic materials absorb light, they don't refract / scatter
+                        var refractedAmt = (1 - reflectedAmt) * (1 - metallicRatio);
+
+                        // Specular / Reflected Ray
+                        if (Vector3.Dot(reflectedRay, hitinfo.normal) > 0)
                         {
-                            castQueue.Enqueue(new CameraRay
+                            // Dielectric materials have white specular, metallic have baseColor specular
+                            var reflectColor = Color.Lerp(Color.white, baseColor, metallicRatio) * reflectedAmt * ray.color;
+                            CastIfBrightEnough(new CameraRay
                             {
                                 start = hitinfo.point,
-                                direction = reflected,
-                                color = ray.color * albedo,
+                                direction = reflectedRay,
+                                color = reflectColor,
+                                bounces = ray.bounces + 1
+                            });
+                        }
+
+                        // Diffuse / Refracted Ray
+                        if (refractedAmt > 0)
+                        {
+                            var refractColor = baseColor * refractedAmt * ray.color;
+                            CastIfBrightEnough(new CameraRay
+                            {
+                                start = hitinfo.point,
+                                direction = RandomConeDirectionUniform(180, hitinfo.normal),  // Scatter anywhere uniformly
+                                color = refractColor,
                                 bounces = ray.bounces + 1
                             });
                         }
@@ -201,6 +239,14 @@ namespace LiteralRaytrace
                     screenspaceDelta = screenspaceDelta,
                     color = ray.color
                 });
+            }
+        }
+
+        private void CastIfBrightEnough(CameraRay ray)
+        {
+            if (ray.color.grayscale > MinBrightness)
+            {
+                castQueue.Enqueue(ray);
             }
         }
 
@@ -281,12 +327,21 @@ namespace LiteralRaytrace
             return Mathf.Pow(2, ev - 3);
         }
 
-        private Vector3 RandomConeDirection(float maxAngle, float sigma, Vector3 origDirection)
+        private Vector3 RandomConeDirectionNormal(float maxAngle, float sigma, Vector3 origDirection)
         {
             var origRotation = Quaternion.FromToRotation(Vector3.forward, origDirection);
             return origRotation *
                 Quaternion.AngleAxis(Random.Range(0, 360), Vector3.forward) *
                 Quaternion.AngleAxis(RandomGaussian(sigma, 0, -maxAngle / 2, maxAngle / 2), Vector3.up) *
+                Vector3.forward;
+        }
+
+        private Vector3 RandomConeDirectionUniform(float maxAngle, Vector3 origDirection)
+        {
+            var origRotation = Quaternion.FromToRotation(Vector3.forward, origDirection);
+            return origRotation *
+                Quaternion.AngleAxis(Random.Range(0, 360), Vector3.forward) *
+                Quaternion.AngleAxis(Random.Range(-maxAngle / 2, maxAngle / 2), Vector3.up) *
                 Vector3.forward;
         }
 

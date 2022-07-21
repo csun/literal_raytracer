@@ -37,9 +37,13 @@ namespace LiteralRaytrace
             maskMap = (Texture2D)material.GetTexture("_MaskMap");
             baseColor = material.GetColor("_BaseColor");
             noMapSmoothness = material.GetFloat("_Smoothness");
+            noMapMetallic = material.GetFloat("_Metallic");
             mapSmoothnessRange = new Vector2(
                 material.GetFloat("_SmoothnessRemapMin"),
                 material.GetFloat("_SmoothnessRemapMax"));
+            mapMetallicRange = new Vector2(
+                material.GetFloat("_MetallicRemapMin"),
+                material.GetFloat("_MetallicRemapMax"));
         }
 
         public Color SampleBaseColor(Vector2 uv)
@@ -174,7 +178,7 @@ namespace LiteralRaytrace
 
                         // We use smoothness to determine the sigma of the random noise applied to the direction
                         // that the reflected ray will bounce. This constant multiplier is arbitrarily chosen
-                        var smoothnessSigma = (1 - material.SampleSmoothness(hitinfo.textureCoord)) * 20;
+                        var smoothnessSigma = (1 - material.SampleSmoothness(hitinfo.textureCoord)) * 40;
 
                         var randomizedNormal = RandomConeDirectionNormal(180, smoothnessSigma, hitinfo.normal);
                         var reflectedRay = Vector3.Reflect(ray.direction, randomizedNormal);

@@ -148,7 +148,7 @@ namespace LiteralRaytrace
         {
             using (processRayPerfMarker.Auto())
             {
-                var raysToProcess = Mathf.Max(ActiveRayTarget, castQueue.Count);
+                var raysToProcess = Mathf.Min(ActiveRayTarget, castQueue.Count);
                 RaysToDraw.Clear();
 
                 for (var i = 0; i < raysToProcess; i++)

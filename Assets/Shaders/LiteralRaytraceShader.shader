@@ -13,11 +13,12 @@ Shader "FullScreen/LiteralRaytraceShader"
 	Texture2D<float3> _SampledColor;
 	Texture2D<float> _SampledTotalBrightness;
 	Texture2D<float> _BrightnessPyramid;
+	float _Exposure;
 	float _BlendAmount;
 
 	float4 ColorPass(Varyings varyings) : SV_Target
 	{
-		float brightness = clamp(_SampledTotalBrightness[varyings.positionCS.xy] / _BrightnessPyramid[uint2(0,0)], 0, 1);
+		float brightness = clamp(_SampledTotalBrightness[varyings.positionCS.xy] * _Exposure / _BrightnessPyramid[uint2(0,0)], 0, 1);
 
 		// Normalize the color first because the brightness is captured separately
 		return float4(normalize(_SampledColor[varyings.positionCS.xy]) * brightness, _BlendAmount);

@@ -12,6 +12,7 @@ class LiteralRaytraceCustomPass : CustomPass
     public ComputeShader SamplingShader;
     public ComputeShader BrightnessPyramidShader;
     public Material DrawMaterial;
+    public float Exposure = 1;
     public float BlendAmount = 1;
 
     RenderTexture sampledColor;
@@ -69,6 +70,7 @@ class LiteralRaytraceCustomPass : CustomPass
         DrawMaterial.SetTexture("_SampledColor", sampledColor);
         DrawMaterial.SetTexture("_SampledTotalBrightness", sampledTotalBrightness);
         DrawMaterial.SetTexture("_BrightnessPyramid", brightnessPyramids[currentBrightnessPyramid]);
+        DrawMaterial.SetFloat("_Exposure", Exposure);
         DrawMaterial.SetFloat("_BlendAmount", BlendAmount);
         SetRenderTargetAuto(ctx.cmd);
         CoreUtils.DrawFullScreen(ctx.cmd, DrawMaterial);

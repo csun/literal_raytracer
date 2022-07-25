@@ -94,10 +94,17 @@ namespace LiteralRaytrace
         public int MaxBounces = 16;
         public float MinBrightness = 0.0001f;
         public float MaxRayDistance = 30;
+        public float IntensityUpperBound = EVToIntensity(16);
+
+        // Fresnel equation reflectiveness at 0 degrees
+        public float DielectricFresnel0 = 0.04f;
+        public float MetallicFresnel0 = 0.8f;
+
+        // Amount of refracted rays that get scattered vs absorbed
+        public float DielectricRefractionAmount = 0.4f;
+
         [HideInInspector]
         public List<DrawRay> RaysToDraw = new List<DrawRay>();
-
-        public float IntensityUpperBound = EVToIntensity(16);
 
         private Queue<CameraRay> castQueue = new Queue<CameraRay>();
         private Dictionary<int, CachedMaterial> materialCache = new Dictionary<int, CachedMaterial>();
@@ -185,12 +192,13 @@ namespace LiteralRaytrace
 
                         // F0 is fresnel reflectance ratio at 0 degrees. The defaults here are estimates for dielectric and metallic surfaces.
                         // See https://substance3d.adobe.com/tutorials/courses/the-pbr-guide-part-1
-                        var effectiveF0 = Mathf.Lerp(0.04f, 0.8f, metallicRatio);
+                        var effectiveF0 = Mathf.Lerp(DielectricFresnel0, MetallicFresnel0, metallicRatio);
 
                         // Fresnel equation
                         var reflectedAmt = effectiveF0 + (1 - effectiveF0) * Mathf.Pow(1 - Vector3.Dot(randomizedNormal, reflectedRay), 5);
                         // Metallic materials absorb light, they don't refract / scatter
-                        var refractedAmt = (1 - reflectedAmt) * (1 - metallicRatio);
+                        // Dielectric materials absorb some percentage of the light that would otherwise be refracted
+                        var refractedAmt = (1 - reflectedAmt) * (1 - metallicRatio) * Mathf.Lerp(DielectricRefractionAmount, 1, metallicRatio);
 
                         // Specular / Reflected Ray
                         if (Vector3.Dot(reflectedRay, hitinfo.normal) > 0)

@@ -19,9 +19,10 @@ Shader "FullScreen/LiteralRaytraceShader"
 	float4 ColorPass(Varyings varyings) : SV_Target
 	{
 		float brightness = clamp(_SampledTotalBrightness[varyings.positionCS.xy] * _Exposure / _BrightnessPyramid[uint2(0,0)], 0, 1);
+		float3 sampledColor = _SampledColor[varyings.positionCS.xy];
 
 		// Normalize the color first because the brightness is captured separately
-		return float4(normalize(_SampledColor[varyings.positionCS.xy]) * brightness, _BlendAmount);
+		return float4(sampledColor > 0 ? normalize(sampledColor) * brightness : 0, _BlendAmount);
 	}
 
 		ENDHLSL

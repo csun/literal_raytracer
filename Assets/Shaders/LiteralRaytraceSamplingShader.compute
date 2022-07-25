@@ -44,6 +44,7 @@ void SampleRays (uint3 id : SV_DispatchThreadID)
 		totalBrightness += currentBrightness;
 
 		float3 candidateColor = ((_RayColors[i] * currentBrightness) + (avgColor * prevTotalBrightness)) / totalBrightness;
+		//candidateColor = float3(linePoint.z > sceneDepth ? linePoint.z - sceneDepth : 0, linePoint.z < sceneDepth, 0);
 		avgColor = shouldDraw ? candidateColor : avgColor;
 	}
 

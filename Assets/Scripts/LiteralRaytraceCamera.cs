@@ -93,7 +93,7 @@ namespace LiteralRaytrace
         public int MinBounces = 1;
         public int MaxBounces = 16;
         public float MinBrightness = 0.0001f;
-        public float MaxRayDistance = 1000;
+        public float MaxRayDistance = 30;
         [HideInInspector]
         public List<DrawRay> RaysToDraw = new List<DrawRay>();
 
@@ -132,7 +132,7 @@ namespace LiteralRaytrace
                     nextLight = (nextLight + 1) % lights.Length;
 
                     var direction = RandomConeDirectionNormal(
-                        light.spotAngle, light.spotAngle / 6, light.transform.forward);
+                        light.spotAngle, light.spotAngle / 4, light.transform.forward);
 
                     castQueue.Enqueue(new CameraRay
                     {

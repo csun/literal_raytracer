@@ -146,6 +146,10 @@ PrefabInstance:
       propertyPath: MinBounces
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 1084870984071425496, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
+      propertyPath: MaxRayDistance
+      value: 10
+      objectReference: {fileID: 0}
     - target: {fileID: 1084870984071425497, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
       propertyPath: m_RootOrder
       value: 0
@@ -196,7 +200,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2094342857388402104, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
       propertyPath: customPasses.Array.data[0].Exposure
-      value: 100
+      value: 35
       objectReference: {fileID: 0}
     - target: {fileID: 2094342857388402104, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
       propertyPath: customPasses.Array.data[0].BlendAmount

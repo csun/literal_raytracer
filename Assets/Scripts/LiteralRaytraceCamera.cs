@@ -178,7 +178,7 @@ namespace LiteralRaytrace
 
                         // We use smoothness to determine the sigma of the random noise applied to the direction
                         // that the reflected ray will bounce. This constant multiplier is arbitrarily chosen
-                        var smoothnessSigma = (1 - material.SampleSmoothness(hitinfo.textureCoord)) * 40;
+                        var smoothnessSigma = (1 - material.SampleSmoothness(hitinfo.textureCoord)) * 50;
 
                         var randomizedNormal = RandomConeDirectionNormal(180, smoothnessSigma, hitinfo.normal);
                         var reflectedRay = Vector3.Reflect(ray.direction, randomizedNormal);

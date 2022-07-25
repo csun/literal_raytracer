@@ -13,12 +13,17 @@ Shader "FullScreen/LiteralRaytraceShader"
 	Texture2D<float3> _SampledColor;
 	Texture2D<float> _SampledTotalBrightness;
 	Texture2D<float> _BrightnessPyramid;
+
+	// Anything above will result in nonlinear exposure.
+	// The higher the power, the more contrast is reduced (mids and lows boosted)
+	float _ExposureCurvePower;
 	float _Exposure;
 	float _BlendAmount;
 
 	float4 ColorPass(Varyings varyings) : SV_Target
 	{
 		float brightness = clamp(_SampledTotalBrightness[varyings.positionCS.xy] * _Exposure / _BrightnessPyramid[uint2(0,0)], 0, 1);
+		brightness = 1 - pow(1 - brightness, _ExposureCurvePower);
 		float3 sampledColor = _SampledColor[varyings.positionCS.xy];
 
 		// Normalize the color first because the brightness is captured separately

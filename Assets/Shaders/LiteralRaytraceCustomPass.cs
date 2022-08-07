@@ -12,6 +12,7 @@ class LiteralRaytraceCustomPass : CustomPass
     public ComputeShader SamplingShader;
     public ComputeShader BrightnessPyramidShader;
     public Material DrawMaterial;
+    public float FixedMaxBrightness = -1;
     public float ExposureCurvePower = 1;
     public float Exposure = 1;
     public float BlendAmount = 1;
@@ -49,28 +50,33 @@ class LiteralRaytraceCustomPass : CustomPass
         SamplingShader.SetInt("_RayCount", RaytraceCamera.RaysToDraw.Count);
         ctx.cmd.DispatchCompute(SamplingShader, 0, Screen.width / 8, Screen.height / 8, 1);
 
-        var pyramidGroups = new Vector2((float)Screen.width / PYRAMID_REGION_SIZE, (float)Screen.height / PYRAMID_REGION_SIZE);
-        ctx.cmd.SetComputeTextureParam(BrightnessPyramidShader, 0, "_Input", sampledTotalBrightness);
-        ctx.cmd.SetComputeTextureParam(BrightnessPyramidShader, 0, "_Output", brightnessPyramids[currentBrightnessPyramid]);
-        ctx.cmd.DispatchCompute(
-            BrightnessPyramidShader, 0, Mathf.CeilToInt(pyramidGroups.x), Mathf.CeilToInt(pyramidGroups.y), 1);
-
-        while (Mathf.Max(pyramidGroups.x, pyramidGroups.y) >= 1)
+        if (FixedMaxBrightness <= 0)
         {
-            pyramidGroups /= PYRAMID_REGION_SIZE;
-
-            ctx.cmd.SetComputeTextureParam(BrightnessPyramidShader, 0, "_Input", brightnessPyramids[currentBrightnessPyramid]);
-            ctx.cmd.SetComputeTextureParam(BrightnessPyramidShader, 0, "_Output", brightnessPyramids[nextBrightnessPyramid]);
-
+            var pyramidGroups = new Vector2((float)Screen.width / PYRAMID_REGION_SIZE, (float)Screen.height / PYRAMID_REGION_SIZE);
+            ctx.cmd.SetComputeTextureParam(BrightnessPyramidShader, 0, "_Input", sampledTotalBrightness);
+            ctx.cmd.SetComputeTextureParam(BrightnessPyramidShader, 0, "_Output", brightnessPyramids[currentBrightnessPyramid]);
             ctx.cmd.DispatchCompute(
                 BrightnessPyramidShader, 0, Mathf.CeilToInt(pyramidGroups.x), Mathf.CeilToInt(pyramidGroups.y), 1);
 
-            currentBrightnessPyramid = nextBrightnessPyramid;
-        } 
+            while (Mathf.Max(pyramidGroups.x, pyramidGroups.y) >= 1)
+            {
+                pyramidGroups /= PYRAMID_REGION_SIZE;
+
+                ctx.cmd.SetComputeTextureParam(BrightnessPyramidShader, 0, "_Input", brightnessPyramids[currentBrightnessPyramid]);
+                ctx.cmd.SetComputeTextureParam(BrightnessPyramidShader, 0, "_Output", brightnessPyramids[nextBrightnessPyramid]);
+
+                ctx.cmd.DispatchCompute(
+                    BrightnessPyramidShader, 0, Mathf.CeilToInt(pyramidGroups.x), Mathf.CeilToInt(pyramidGroups.y), 1);
+
+                currentBrightnessPyramid = nextBrightnessPyramid;
+            } 
+
+            DrawMaterial.SetTexture("_BrightnessPyramid", brightnessPyramids[currentBrightnessPyramid]);
+        }
 
         DrawMaterial.SetTexture("_SampledColor", sampledColor);
         DrawMaterial.SetTexture("_SampledTotalBrightness", sampledTotalBrightness);
-        DrawMaterial.SetTexture("_BrightnessPyramid", brightnessPyramids[currentBrightnessPyramid]);
+        DrawMaterial.SetFloat("_FixedMaxBrightness", FixedMaxBrightness);
         DrawMaterial.SetFloat("_ExposureCurvePower", ExposureCurvePower);
         DrawMaterial.SetFloat("_Exposure", Exposure);
         DrawMaterial.SetFloat("_BlendAmount", BlendAmount);

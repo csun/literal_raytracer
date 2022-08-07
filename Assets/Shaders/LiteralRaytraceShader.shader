@@ -14,8 +14,8 @@ Shader "FullScreen/LiteralRaytraceShader"
 	Texture2D<float> _SampledTotalBrightness;
 	Texture2D<float> _BrightnessPyramid;
 
-	// If set, overrides the results of the brightness pyramid
-	float _FixedMaxBrightness;
+	// Ensures that auto exposure does not drop below a certain level
+	float _MinBrightnessDivisor;
 	// Anything above 1 will result in nonlinear exposure.
 	// The higher the power, the more contrast is reduced (mids and lows boosted)
 	float _ExposureCurvePower;
@@ -24,7 +24,7 @@ Shader "FullScreen/LiteralRaytraceShader"
 
 	float4 ColorPass(Varyings varyings) : SV_Target
 	{
-		float maxBrightness = _FixedMaxBrightness > 0 ? _FixedMaxBrightness : _BrightnessPyramid[uint2(0,0)];
+		float maxBrightness = max(_MinBrightnessDivisor, _BrightnessPyramid[uint2(0,0)]);
 		float brightness = clamp(_SampledTotalBrightness[varyings.positionCS.xy] * _Exposure / maxBrightness, 0, 1);
 		brightness = 1 - pow(1 - brightness, _ExposureCurvePower);
 		float3 sampledColor = _SampledColor[varyings.positionCS.xy];

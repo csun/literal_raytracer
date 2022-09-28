@@ -156,7 +156,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1084870984071425496, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
       propertyPath: ActiveRayTarget
-      value: 128
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 1084870984071425497, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
       propertyPath: m_RootOrder
@@ -216,7 +216,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2094342857388402104, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
       propertyPath: customPasses.Array.data[0].TargetFrameRate
-      value: 60
+      value: 30
       objectReference: {fileID: 0}
     - target: {fileID: 2094342857388402104, guid: 1f14e244b7ea58c47a04e7fa752c9282, type: 3}
       propertyPath: customPasses.Array.data[0].ExposureCurvePower
@@ -257,7 +257,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 157547304}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.6, z: 0}
+  m_LocalPosition: {x: 0.39, y: -0.44, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 117703582}
